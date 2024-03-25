@@ -8,6 +8,7 @@ fn main() {
 enum ActionForCore {
     Show,
     Composed(String),
+    Edit(String),
 }
 
 fn argument() {
@@ -39,6 +40,11 @@ fn cli() -> Command {
         .subcommand(Command::new("show").short_flag('s'))
         .subcommand(
             Command::new("compose").short_flag('c').arg(
+                arg!(<BUFFERS> ... "series of buffer").value_parser(clap::value_parser!(String)),
+            ),
+        )
+        .subcommand(
+            Command::new("edit").short_flag('e').arg(
                 arg!(<BUFFERS> ... "series of buffer").value_parser(clap::value_parser!(String)),
             ),
         )
