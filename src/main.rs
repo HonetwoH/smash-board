@@ -1,7 +1,12 @@
-use clap::{arg, Command};
+use clap::{arg, ArgMatches, Command};
 
 fn main() {
-    argument();
+    match argument() {
+        ActionForCore::Composed(x) | ActionForCore::Edit(x) => {
+            dbg!(x);
+        }
+        _ => {}
+    }
 }
 
 #[derive(Debug)]
@@ -11,26 +16,32 @@ enum ActionForCore {
     Edit(String),
 }
 
-fn argument() {
-    let matches = dbg!(cli().get_matches());
-    dbg!(match matches.subcommand() {
+fn argument() -> ActionForCore {
+    let collect_argument = |buffers: &ArgMatches| {
+        buffers
+            .get_raw("BUFFERS")
+            .unwrap()
+            .fold(String::new(), |mut arg, x| {
+                arg.push_str(x.to_str().expect("Convertion failed"));
+                arg
+            })
+    };
+    let matches = cli().get_matches();
+    match matches.subcommand() {
         Some(("show", _)) => {
-            println!("Show them some thing");
+            // println!("Show them some thing");
             ActionForCore::Show
         }
         Some(("compose", buffers)) => {
-            let parsed_arg =
-                buffers
-                    .get_raw("BUFFERS")
-                    .unwrap()
-                    .fold(String::new(), |mut arg, x| {
-                        arg.push_str(x.to_str().expect("Convertion failed"));
-                        arg
-                    });
+            let parsed_arg = collect_argument(buffers);
             ActionForCore::Composed(parsed_arg)
         }
+        Some(("edit", buffers)) => {
+            let parsed_arg = collect_argument(buffers);
+            ActionForCore::Edit(parsed_arg)
+        }
         _ => unreachable!(),
-    });
+    }
 }
 
 fn cli() -> Command {
