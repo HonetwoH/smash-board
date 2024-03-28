@@ -23,25 +23,35 @@ type Blob = String;
 const DB_PATH: &str = "/tmp/smash.db";
 const LIMIT: usize = 8;
 
+#[derive(Debug)]
+struct Output {
+    id: usize,
+    pastes: Blob,
+}
+
 impl Db {
     fn new() -> Result<Self> {
         let path = Path::new(DB_PATH);
-        let conn = if !path.exists() {
+        let (conn, top_id) = if !path.exists() {
             let conn = Connection::open(path)?;
             conn.execute(
                 "CREATE TABLE pastes (
                     id    INTEGER PRIMARY KEY,
                     paste BLOB
                 )",
-                (), // empty list of parameters.
+                [],
             )?;
-            conn
+            (conn, 0)
         } else {
             let conn = Connection::open(path)?;
-            conn
+            let top_id: usize =
+                match conn.query_row("SELECT MAX(id) FROM pastes;", [], |row| row.get(0)) {
+                    Ok(x) => x,
+                    Err(_) => 0,
+                };
+            (conn, top_id)
         };
-        // let top_id = conn.query("SELECT id FROM pastes ORDER BY id DESC LIMIT 1", [])?;
-        Ok(Self { conn, top_id: 0 })
+        Ok(Self { conn, top_id })
     }
 
     // compute index by respecting the constraints imposed
@@ -71,7 +81,7 @@ impl Db {
             .unwrap();
         blob_idxs
             .into_iter()
-            // .map(|x| self.compute_index(x))
+            .map(|x| self.compute_index(x))
             .map(|x| {
                 // TODO: make sure that error from this part dont get unnoticed
                 query.query_row([x], |row| row.get(0))
@@ -79,8 +89,22 @@ impl Db {
             .collect()
     }
 
-    fn show(&self) {
-        dbg!(self.conn.execute("SELECT id, paste FROM pastes;", []));
+    fn show(&self, range: usize) -> Result<()> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id, paste FROM pastes ORDER BY id DESC;")?;
+        let que = stmt.query([])?;
+        que.mapped(|r| {
+            Ok(Output {
+                id: r.get(0)?,
+                pastes: r.get(1)?,
+            })
+        })
+        .take(range)
+        .for_each(|x| {
+            dbg!(x.unwrap());
+        });
+        Ok(())
     }
 }
 fn main() {
@@ -93,7 +117,6 @@ fn main() {
     let _ = dbg!(db.push(String::from("Hello Neptune")));
     let _ = dbg!(db.push(String::from("Hello Mercury")));
     let _ = dbg!(db.push(String::from("Hello Uranas")));
-    dbg!(db.fetch(vec![1, 2, 3]));
-    // dbg!(db.conn.prepare());
-    // .execute("SELECT id FROM pastes ORDER BY id DESC LIMIT 1", []));
+    db.show(8);
+    dbg!(db.fetch(vec![0, 1, 2, 3]));
 }
