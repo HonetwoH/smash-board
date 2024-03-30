@@ -18,6 +18,11 @@ struct Db {
     top_id: usize,
 }
 
+enum IndexErrors {
+    NotEnoughEntries,
+    ExceededLimit,
+}
+
 type Blob = String;
 
 const DB_PATH: &str = "/tmp/smash.db";
@@ -26,7 +31,7 @@ const LIMIT: usize = 8;
 #[derive(Debug)]
 struct Output {
     id: usize,
-    pastes: Blob,
+    paste: Blob,
 }
 
 impl Db {
@@ -57,12 +62,19 @@ impl Db {
     // compute index by respecting the constraints imposed
     // i.e is octal or hexadecimal
     // TODO: Make sure that there is the db does not change right underneath the function call
-    fn compute_index(&self, idx: usize) -> usize {
+    fn compute_index(&self, idx: usize) -> Result<usize, IndexErrors> {
         //TODO: This method should return error along with the top_id
-        if idx <= LIMIT {
-            self.top_id - idx
+        if idx <= LIMIT && self.top_id > idx {
+            Ok(self.top_id - idx)
+        } else if idx > LIMIT {
+            Err(IndexErrors::ExceededLimit)
+        } else if idx > self.top_id {
+            Err(IndexErrors::NotEnoughEntries)
         } else {
-            self.top_id
+            unreachable!(
+                "Found another edge case right here:\n Top: {},\t Requested: {}",
+                self.top_id, idx
+            )
         }
     }
 
@@ -84,7 +96,10 @@ impl Db {
             .map(|x| self.compute_index(x))
             .map(|x| {
                 // TODO: make sure that error from this part dont get unnoticed
-                query.query_row([x], |row| row.get(0))
+                match x {
+                    Ok(y) => query.query_row([y], |row| row.get(0)), // this part generates errors
+                    Err(_) => Ok(String::new()),
+                }
             })
             .collect()
     }
@@ -97,12 +112,13 @@ impl Db {
         que.mapped(|r| {
             Ok(Output {
                 id: r.get(0)?,
-                pastes: r.get(1)?,
+                paste: r.get(1)?,
             })
         })
         .take(range)
         .for_each(|x| {
-            dbg!(x.unwrap());
+            let output = x.unwrap();
+            println!("{}\t{}", output.id, output.paste);
         });
         Ok(())
     }
