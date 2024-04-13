@@ -1,46 +1,65 @@
-mod Cli {
+mod cli {
     use clap::{arg, ArgMatches, Command};
+    use core::panic;
 
-    fn start() {
+    pub fn start() {
+        use crate::db::Db;
+        let pastesbin = Db::new().unwrap();
         match argument() {
-            ActionForCore::Composed(x) | ActionForCore::Edit(x) => {
-                dbg!(x);
+            ActionForCore::Show => pastesbin.show(8),
+            ActionForCore::Composed(order_of_buffers) => {
+                dbg!(order_of_buffers);
             }
-            _ => {}
+            ActionForCore::Push(new_paste) => {
+                dbg!(&new_paste);
+                pastesbin.push(new_paste).unwrap();
+            }
+            _ => panic!(),
         }
     }
 
     #[derive(Debug)]
-    enum ActionForCore {
+    pub enum ActionForCore {
         Show,
+        Paste,
+        Push(String),
+        StartDaemon,
+        Edit,
+        // compose action will only handle the compostion and
+        // it cannot operate on any thing on itself
         Composed(String),
-        Edit(String),
     }
 
     fn argument() -> ActionForCore {
-        let collect_argument = |buffers: &ArgMatches| {
-            buffers
-                .get_raw("BUFFERS")
-                .unwrap()
-                .fold(String::new(), |mut arg, x| {
+        let collect_argument = |buffers: &ArgMatches, with_spaces: bool| {
+            let buf = buffers.get_raw("BUFFERS").unwrap();
+            if with_spaces {
+                buf.fold(String::new(), |mut arg, x| {
+                    arg.push_str(x.to_str().expect("Convertion failed"));
+                    arg.push(' ');
+                    arg
+                })
+            } else {
+                buf.fold(String::new(), |mut arg, x| {
                     arg.push_str(x.to_str().expect("Convertion failed"));
                     arg
                 })
+            }
         };
         let matches = cli().get_matches();
         match matches.subcommand() {
-            Some(("show", _)) => {
-                // println!("Show them some thing");
-                ActionForCore::Show
+            Some(("show", _)) => ActionForCore::Show,
+            Some(("edit", _)) => ActionForCore::Edit,
+            Some(("push", buffers)) => {
+                let parsed_arg = collect_argument(buffers, true);
+                ActionForCore::Push(parsed_arg)
             }
             Some(("compose", buffers)) => {
-                let parsed_arg = collect_argument(buffers);
+                let parsed_arg = collect_argument(buffers, false);
                 ActionForCore::Composed(parsed_arg)
             }
-            Some(("edit", buffers)) => {
-                let parsed_arg = collect_argument(buffers);
-                ActionForCore::Edit(parsed_arg)
-            }
+            // daemon is called without arguments
+            // Some(("daemon", _)) => ActionForCore::StartDaemon,
             _ => unreachable!(),
         }
     }
@@ -49,17 +68,60 @@ mod Cli {
         Command::new("sb")
             .about("New kind of clipboard")
             .arg_required_else_help(true)
-            .subcommand(Command::new("show").short_flag('s'))
-            .subcommand(Command::new("compose").short_flag('c').arg(
-                arg!(<BUFFERS> ... "series of buffer").value_parser(clap::value_parser!(String)),
-            ))
+            .subcommand(
+                Command::new("show")
+                    .short_flag('s')
+                    .about("Shows the recent buffers"),
+            )
+            .subcommand(
+                Command::new("push")
+                    .short_flag('p')
+                    .about("Add the following string to board")
+                    .arg(
+                        arg!(<BUFFERS> ... "series of buffer")
+                            .value_parser(clap::value_parser!(String)),
+                    ),
+            )
+            .subcommand(
+                Command::new("compose")
+                    .short_flag('c')
+                    .about("Reads sequence of buffer for edit command")
+                    .arg(
+                        arg!(<BUFFERS> ... "series of buffer")
+                            .value_parser(clap::value_parser!(String)),
+                    ),
+            )
             .subcommand(Command::new("edit").short_flag('e').arg(
                 arg!(<BUFFERS> ... "series of buffer").value_parser(clap::value_parser!(String)),
             ))
+            .subcommand(Command::new("daemon").short_flag('d'))
     }
 }
 
-mod Db {
+// mod Daemon {
+//     // Will take care of interactions between the client and database and handle
+//     // There should be only one daemon obviously !!
+//     //
+//     // setup daemon and wait for wl-paste to spew out stuff
+//     use ctrlc;
+//     use std::fs::File;
+//     use std::path::Path;
+//     const LOCKFILE: &str = "/tmp/smashed";
+
+//     enum Msg {
+//         Created,
+//         AlreadyPresent,
+//     }
+
+//     fn lockfile() -> Msg {
+//         match File::create(LOCKFILE) {
+//             Ok(_) => Msg::Created,
+//             Err(_) => Msg::AlreadyPresent,
+//         }
+//     }
+// }
+
+mod db {
     use rusqlite::{params, Connection, Result};
     use std::path::Path;
 
@@ -72,10 +134,12 @@ mod Db {
         The indexing will be limited to 8 or 16 which will be represented as
         octal or hexademical number respectively
 
+        All the sql related things will be confined in this module
+
     */
 
     #[derive(Debug)]
-    struct Db {
+    pub struct Db {
         conn: Connection,
         top_id: usize,
     }
@@ -97,7 +161,7 @@ mod Db {
     }
 
     impl Db {
-        fn new() -> Result<Self> {
+        pub fn new() -> Result<Self> {
             let path = Path::new(DB_PATH);
             let (conn, top_id) = if !path.exists() {
                 let conn = Connection::open(path)?;
@@ -141,14 +205,14 @@ mod Db {
         }
 
         // push is expected to work on single blob at a time hence the string directly
-        fn push(&self, blob: Blob) -> Result<()> {
+        pub fn push(&self, blob: Blob) -> Result<()> {
             self.conn
                 .execute("INSERT INTO pastes (paste) VALUES (?1)", params![blob])?;
             Ok(())
         }
 
         // fetch is expected to work with batch of blob indices
-        fn fetch(&self, blob_idxs: Vec<usize>) -> Vec<Result<Blob>> {
+        pub fn fetch(&self, blob_idxs: Vec<usize>) -> Vec<Result<Blob>> {
             let mut query = self
                 .conn
                 .prepare("SELECT paste FROM pastes WHERE id = ?1")
@@ -166,37 +230,31 @@ mod Db {
                 .collect()
         }
 
-        fn show(&self, range: usize) -> Result<()> {
-            let mut stmt = self
-                .conn
-                .prepare("SELECT id, paste FROM pastes ORDER BY id DESC;")?;
-            let que = stmt.query([])?;
-            que.mapped(|r| {
-                Ok(Output {
-                    id: r.get(0)?,
-                    paste: r.get(1)?,
-                })
-            })
-            .take(range)
-            .for_each(|x| {
-                let output = x.unwrap();
-                println!("{}\t{}", output.id, output.paste);
-            });
-            Ok(())
+        pub fn show(&self, range: usize) {
+            let mut recent = self.fetch(Vec::from_iter(0..range)).into_iter();
+            let mut index = 1;
+            while let Some(Ok(buf)) = recent.next() {
+                println!("\t{}\t{}", index, buf);
+                index += 1;
+            }
         }
     }
-    #[test]
-    fn test() {
-        let db = Db::new().unwrap();
-        let _ = dbg!(db.push(String::from("Hello World")));
-        let _ = dbg!(db.push(String::from("Hello Mars")));
-        let _ = dbg!(db.push(String::from("Hello Mars")));
-        let _ = dbg!(db.push(String::from("Hello Venus")));
-        let _ = dbg!(db.push(String::from("Hello Jupiter")));
-        let _ = dbg!(db.push(String::from("Hello Neptune")));
-        let _ = dbg!(db.push(String::from("Hello Mercury")));
-        let _ = dbg!(db.push(String::from("Hello Uranas")));
-        db.show(8);
-        dbg!(db.fetch(vec![0, 1, 2, 3]));
-    }
+    // #[test]
+    // fn test() {
+    //     let db = Db::new().unwrap();
+    //     let _ = dbg!(db.push(String::from("Hello World")));
+    //     let _ = dbg!(db.push(String::from("Hello Mars")));
+    //     let _ = dbg!(db.push(String::from("Hello Mars")));
+    //     let _ = dbg!(db.push(String::from("Hello Venus")));
+    //     let _ = dbg!(db.push(String::from("Hello Jupiter")));
+    //     let _ = dbg!(db.push(String::from("Hello Neptune")));
+    //     let _ = dbg!(db.push(String::from("Hello Mercury")));
+    //     let _ = dbg!(db.push(String::from("Hello Uranas")));
+    //     db.show(8);
+    //     dbg!(db.fetch(vec![0, 1, 2, 3]));
+    // }
+}
+
+fn main() {
+    dbg!(cli::start());
 }
