@@ -1,3 +1,4 @@
+mod config {}
 mod cli {
     use clap::{arg, ArgMatches, Command};
     use core::panic;
@@ -10,9 +11,9 @@ mod cli {
             ActionForCore::Composed(order_of_buffers) => {
                 dbg!(order_of_buffers);
             }
-            ActionForCore::Push(new_paste) => {
+            ActionForCore::Paste(new_paste) => {
                 dbg!(&new_paste);
-                pastesbin.push(new_paste).unwrap();
+                // pastesbin.push(new_paste).unwrap();
             }
             _ => panic!(),
         }
@@ -21,9 +22,9 @@ mod cli {
     #[derive(Debug)]
     pub enum ActionForCore {
         Show,
-        Paste,
-        Push(String),
-        StartDaemon,
+        Paste(String),
+        Copy,
+        // StartDaemon,
         Edit,
         // compose action will only handle the compostion and
         // it cannot operate on any thing on itself
@@ -50,9 +51,10 @@ mod cli {
         match matches.subcommand() {
             Some(("show", _)) => ActionForCore::Show,
             Some(("edit", _)) => ActionForCore::Edit,
-            Some(("push", buffers)) => {
+            Some(("copy", _)) => ActionForCore::Copy,
+            Some(("paste", buffers)) => {
                 let parsed_arg = collect_argument(buffers, true);
-                ActionForCore::Push(parsed_arg)
+                ActionForCore::Paste(parsed_arg)
             }
             Some(("compose", buffers)) => {
                 let parsed_arg = collect_argument(buffers, false);
@@ -68,58 +70,21 @@ mod cli {
         Command::new("sb")
             .about("New kind of clipboard")
             .arg_required_else_help(true)
-            .subcommand(
-                Command::new("show")
-                    .short_flag('s')
-                    .about("Shows the recent buffers"),
-            )
-            .subcommand(
-                Command::new("push")
-                    .short_flag('p')
-                    .about("Add the following string to board")
-                    .arg(
-                        arg!(<BUFFERS> ... "series of buffer")
-                            .value_parser(clap::value_parser!(String)),
-                    ),
-            )
-            .subcommand(
-                Command::new("compose")
-                    .short_flag('c')
-                    .about("Reads sequence of buffer for edit command")
-                    .arg(
-                        arg!(<BUFFERS> ... "series of buffer")
-                            .value_parser(clap::value_parser!(String)),
-                    ),
-            )
-            .subcommand(Command::new("edit").short_flag('e').arg(
+            .subcommand(Command::new("paste").about("Paste text from buffer").arg(
                 arg!(<BUFFERS> ... "series of buffer").value_parser(clap::value_parser!(String)),
             ))
-            .subcommand(Command::new("daemon").short_flag('d'))
+            .subcommand(Command::new("copy").about("Copy text to buffer"))
+            .subcommand(Command::new("show").about("Shows the recent buffers"))
+            .subcommand(
+                Command::new("compose")
+                    .about("Compose existing buffer to make a new paste")
+                    .arg(
+                        arg!(<BUFFERS> ... "series of buffer")
+                            .value_parser(clap::value_parser!(String)),
+                    ),
+            )
     }
 }
-
-// mod Daemon {
-//     // Will take care of interactions between the client and database and handle
-//     // There should be only one daemon obviously !!
-//     //
-//     // setup daemon and wait for wl-paste to spew out stuff
-//     use ctrlc;
-//     use std::fs::File;
-//     use std::path::Path;
-//     const LOCKFILE: &str = "/tmp/smashed";
-
-//     enum Msg {
-//         Created,
-//         AlreadyPresent,
-//     }
-
-//     fn lockfile() -> Msg {
-//         match File::create(LOCKFILE) {
-//             Ok(_) => Msg::Created,
-//             Err(_) => Msg::AlreadyPresent,
-//         }
-//     }
-// }
 
 mod db {
     use rusqlite::{params, Connection, Result};
