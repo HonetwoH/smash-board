@@ -7,5 +7,8 @@ edition = "2021"
 
 [dependencies]
 clap = "4.5.3"
+# confy = "0.6.1"
+crossterm = "0.27.0"
+ratatui = "0.26.2"
 # ctrlc = "3.4.2"
 rusqlite = "0.30.0"
