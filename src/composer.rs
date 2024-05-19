@@ -34,10 +34,23 @@ fn handle_events() -> io::Result<bool> {
     Ok(false)
 }
 
+// the main frame
 fn ui(frame: &mut Frame) {
-    frame.render_widget(
-        Paragraph::new("Hello World!")
-            .block(Block::default().title("Greeting").borders(Borders::ALL)),
-        frame.size(),
-    );
+    let main_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(vec![Constraint::Percentage(12), Constraint::Percentage(88)])
+        .split(frame.size());
+    let preview_and_buffers = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(vec![Constraint::Percentage(35), Constraint::Percentage(65)])
+        .split(main_layout[1]);
+    let prompt =
+        Paragraph::new("prompt").block(Block::default().title("prompt").borders(Borders::ALL));
+    let preview =
+        Paragraph::new("Preview").block(Block::default().title("Preview").borders(Borders::ALL));
+    let buffer =
+        Paragraph::new("Buffer").block(Block::default().title("Buffer").borders(Borders::ALL));
+    frame.render_widget(prompt, main_layout[0]);
+    frame.render_widget(preview, preview_and_buffers[0]);
+    frame.render_widget(buffer, preview_and_buffers[1]);
 }
