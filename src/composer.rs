@@ -8,11 +8,40 @@ use crossterm::{
 };
 use ratatui::{prelude::*, widgets::*};
 
+struct PromptText {
+    field: String,
+}
+
+impl PromptText {
+    fn new() -> Self {
+        Self {
+            field: String::from("█"),
+        }
+    }
+
+    fn push(&mut self, x: char) {
+        let cursor = self.field.pop().unwrap();
+        self.field.push(x);
+        self.field.push(cursor);
+    }
+    fn pop(&mut self) {
+        // 3 because the cursor character is unicode
+        if self.field.len() > 3 {
+            let cursor = self.field.pop().unwrap();
+            let _ = self.field.pop().unwrap();
+            self.field.push(cursor);
+        }
+    }
+    fn dump(&self) -> &str {
+        &self.field
+    }
+}
+
 pub fn main() -> io::Result<()> {
     queue!(stdout(), EnterAlternateScreen)?;
     enable_raw_mode()?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
-    let mut prompt_string = String::from("█");
+    let mut prompt_string = PromptText::new();
 
     let mut should_quit = false;
     while !should_quit {
@@ -25,7 +54,7 @@ pub fn main() -> io::Result<()> {
 
     Ok(())
 }
-fn handle_events(text: &mut String) -> io::Result<bool> {
+fn handle_events(text: &mut PromptText) -> io::Result<bool> {
     if event::poll(std::time::Duration::from_millis(500))? {
         if let Event::Key(key) = event::read()? {
             if key.kind == event::KeyEventKind::Press {
@@ -33,18 +62,14 @@ fn handle_events(text: &mut String) -> io::Result<bool> {
                     return Ok(true);
                 } else {
                     if let KeyCode::Char(x) = key.code {
-                        let cursor = text.pop().unwrap();
                         text.push(x);
-                        text.push(cursor);
                         return Ok(false);
                     } else if let KeyCode::Backspace = key.code {
-                        let cursor = text.pop().unwrap();
-                        let _ = text.pop();
-                        text.push(cursor);
+                        text.pop();
                         return Ok(false);
                     } else {
                         dbg!(key.code);
-                        return Ok(true);
+                        return Ok(false);
                     }
                 }
             }
@@ -54,7 +79,7 @@ fn handle_events(text: &mut String) -> io::Result<bool> {
 }
 
 // the main frame
-fn layout(frame: &mut Frame, prompt: &str) {
+fn layout(frame: &mut Frame, prompt: &PromptText) {
     let main_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints(vec![Constraint::Percentage(12), Constraint::Percentage(88)])
@@ -64,7 +89,7 @@ fn layout(frame: &mut Frame, prompt: &str) {
         .constraints(vec![Constraint::Percentage(35), Constraint::Percentage(65)])
         .split(main_layout[1]);
     let prompt =
-        Paragraph::new(prompt).block(Block::default().title("prompt").borders(Borders::ALL));
+        Paragraph::new(prompt.dump()).block(Block::default().title("prompt").borders(Borders::ALL));
     let preview =
         Paragraph::new("Preview").block(Block::default().title("Preview").borders(Borders::ALL));
     let buffer =
