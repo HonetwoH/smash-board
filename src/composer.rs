@@ -1,12 +1,11 @@
 // the interative panel for the compose command
-use std::io::{self, stdout};
-
 use crossterm::{
     event::{self, Event, KeyCode},
     queue,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{prelude::*, widgets::*};
+use std::io::{self, stdout};
 
 struct PromptText {
     field: String,
@@ -20,6 +19,7 @@ impl PromptText {
     }
 
     fn push(&mut self, x: char) {
+        // TODO: need a constraint on the length at some point
         let cursor = self.field.pop().unwrap();
         self.field.push(x);
         self.field.push(cursor);
@@ -35,6 +35,11 @@ impl PromptText {
     fn dump(&self) -> &str {
         &self.field
     }
+}
+
+struct Buffers {
+    visible_lines: u8,
+    buffers: Vec<String>,
 }
 
 pub fn main() -> io::Result<()> {
@@ -54,6 +59,7 @@ pub fn main() -> io::Result<()> {
 
     Ok(())
 }
+
 fn handle_events(text: &mut PromptText) -> io::Result<bool> {
     if event::poll(std::time::Duration::from_millis(500))? {
         if let Event::Key(key) = event::read()? {
@@ -82,14 +88,14 @@ fn handle_events(text: &mut PromptText) -> io::Result<bool> {
 fn layout(frame: &mut Frame, prompt: &PromptText) {
     let main_layout = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(vec![Constraint::Percentage(12), Constraint::Percentage(88)])
+        .constraints(vec![Constraint::Length(3), Constraint::Fill(1)])
         .split(frame.size());
     let preview_and_buffers = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints(vec![Constraint::Percentage(35), Constraint::Percentage(65)])
+        .constraints(Constraint::from_percentages([45, 55]))
         .split(main_layout[1]);
     let prompt =
-        Paragraph::new(prompt.dump()).block(Block::default().title("prompt").borders(Borders::ALL));
+        Paragraph::new(prompt.dump()).block(Block::default().title("Prompt").borders(Borders::ALL));
     let preview =
         Paragraph::new("Preview").block(Block::default().title("Preview").borders(Borders::ALL));
     let buffer =
