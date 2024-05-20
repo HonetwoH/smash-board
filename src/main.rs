@@ -2,14 +2,15 @@ mod config {
     // this modules will read and interpret config which is
     // as of now just the number of available buffers
 
-    enum Capactiy {
+    pub enum Base {
+        Hexa,
         Octal,
         Decimal,
         HexaDecimal,
     }
 
     struct Config {
-        available_buffers: Capactiy,
+        available_buffers: Base,
     }
 }
 
@@ -18,7 +19,43 @@ mod clipboard_sync {
 }
 
 mod grammer {
+    use ratatui::buffer;
+
     // the grammer for
+    use crate::config::Base;
+
+    pub fn check(line: &str, cap: Base) -> Vec<u8> {
+        let radix = match cap {
+            Base::Hexa => 6,
+            Base::Octal => 8,
+            Base::Decimal => 10,
+            Base::HexaDecimal => 16,
+        };
+        let points = line.as_bytes();
+        let mut buffers = vec![];
+
+        let ignore = |x: u8| {
+            let x = char::from_u32(x as u32).unwrap();
+            let redundant = ['.', ' ', ','];
+            let mut found = false;
+            for i in redundant {
+                found |= if i == x { true } else { false };
+            }
+            found
+        };
+        for token in points {
+            if ignore(*token) {
+                continue;
+            }
+            if let Some(number) = char::from(*token).to_digit(radix) {
+                dbg!(number);
+                buffers.push(number as u8);
+            } else {
+                panic!("Number higher than the Base");
+            }
+        }
+        buffers
+    }
 }
 
 mod composer;
@@ -84,7 +121,7 @@ mod cli_app {
 mod db;
 
 fn main() {
-    // {
+    // { // testing the main app
     //     use crate::cli_app::{argument, ActionForCore};
     //     use crate::db::Db;
 
@@ -98,8 +135,14 @@ fn main() {
     //         _ => panic!(),
     //     }
     // }
+    // { // testing the compose ui
+    //     use crate::composer::main;
+    //     main();
+    // }
     {
-        use crate::composer::main;
-        main();
+        // testing the grammer
+        use crate::config::Base;
+        use crate::grammer::check;
+        check("1.2.3.4.5", Base::Hexa);
     }
 }
