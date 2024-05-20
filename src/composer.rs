@@ -37,9 +37,11 @@ impl PromptText {
     }
 }
 
+type Pastes = String;
+
 struct Buffers {
     visible_lines: u8,
-    buffers: Vec<String>,
+    buffers: Vec<Pastes>,
 }
 
 pub fn main() -> io::Result<()> {
