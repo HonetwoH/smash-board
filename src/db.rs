@@ -25,6 +25,7 @@ enum IndexErrors {
 type Blob = String;
 
 const DB_PATH: &str = "/tmp/smash.db";
+//TODO: change this so that it take the input from config
 const LIMIT: usize = 8;
 
 impl Db {

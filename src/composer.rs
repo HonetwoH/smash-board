@@ -17,7 +17,6 @@ impl PromptText {
             field: String::from("█"),
         }
     }
-
     fn push(&mut self, x: char) {
         // TODO: need a constraint on the length at some point
         let cursor = self.field.pop().unwrap();
@@ -25,7 +24,7 @@ impl PromptText {
         self.field.push(cursor);
     }
     fn pop(&mut self) {
-        // 3 because the cursor character is unicode
+        // 3 because the cursor character is 3 byte unicode
         if self.field.len() > 3 {
             let cursor = self.field.pop().unwrap();
             let _ = self.field.pop().unwrap();
@@ -35,31 +34,9 @@ impl PromptText {
     fn dump(&self) -> &str {
         &self.field
     }
-}
-
-type Pastes = String;
-
-struct Buffers {
-    visible_lines: u8,
-    buffers: Vec<Pastes>,
-}
-
-pub fn main() -> io::Result<()> {
-    queue!(stdout(), EnterAlternateScreen)?;
-    enable_raw_mode()?;
-    let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
-    let mut prompt_string = PromptText::new();
-
-    let mut should_quit = false;
-    while !should_quit {
-        should_quit = handle_events(&mut prompt_string)?;
-        terminal.draw(|frame| layout(frame, &prompt_string))?;
+    fn return_input(&self) -> &str {
+        &self.field[0..&self.field.len() - 3]
     }
-
-    disable_raw_mode()?;
-    queue!(stdout(), LeaveAlternateScreen)?;
-
-    Ok(())
 }
 
 fn handle_events(text: &mut PromptText) -> io::Result<bool> {
@@ -86,8 +63,52 @@ fn handle_events(text: &mut PromptText) -> io::Result<bool> {
     Ok(false)
 }
 
+pub fn render(items: Vec<String>) -> io::Result<()> {
+    // init for terminal
+    queue!(stdout(), EnterAlternateScreen)?;
+    enable_raw_mode()?;
+    let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
+
+    // TODO: maby this should be passed into the function rather than declared here
+    let mut prompt_string = PromptText::new();
+    let mut list_state = ListState::default();
+    // items will be populated by the fetch from the database
+
+    // the main loop
+    let mut should_quit = false;
+    while !should_quit {
+        should_quit = handle_events(&mut prompt_string)?;
+        terminal.draw(|frame| {
+            layout_and_render(frame, &prompt_string, &mut list_state, items.clone())
+        })?;
+    }
+
+    // deinit for terminal
+    disable_raw_mode()?;
+    queue!(stdout(), LeaveAlternateScreen)?;
+    Ok(())
+}
+
 // the main frame
-fn layout(frame: &mut Frame, prompt: &PromptText) {
+fn layout_and_render(
+    frame: &mut Frame,
+    prompt: &PromptText,
+    list_state: &mut ListState,
+    items: Vec<Text>,
+) {
+    let block_config = |title| {
+        Block::default()
+            .title_position(ratatui::widgets::block::Position::Top)
+            .title_alignment(ratatui::layout::Alignment::Left)
+            .title(title)
+            .borders(Borders::ALL)
+    };
+    let buffers = List::new(items)
+        .block(block_config("Buffers"))
+        .highlight_style(Style::default().add_modifier(Modifier::BOLD | Modifier::ITALIC))
+        .direction(ListDirection::TopToBottom);
+
+    // TODO: seprate the layout from or delay the process till the last moment
     let main_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints(vec![Constraint::Length(3), Constraint::Fill(1)])
@@ -96,13 +117,11 @@ fn layout(frame: &mut Frame, prompt: &PromptText) {
         .direction(Direction::Horizontal)
         .constraints(Constraint::from_percentages([45, 55]))
         .split(main_layout[1]);
-    let prompt =
-        Paragraph::new(prompt.dump()).block(Block::default().title("Prompt").borders(Borders::ALL));
-    let preview =
-        Paragraph::new("Preview").block(Block::default().title("Preview").borders(Borders::ALL));
-    let buffer =
-        Paragraph::new("Buffer").block(Block::default().title("Buffer").borders(Borders::ALL));
+
+    let prompt = Paragraph::new(prompt.dump()).block(block_config("Prompt"));
+    let preview = Paragraph::new("Preview").block(block_config("Preview"));
+
     frame.render_widget(prompt, main_layout[0]);
     frame.render_widget(preview, preview_and_buffers[0]);
-    frame.render_widget(buffer, preview_and_buffers[1]);
+    frame.render_stateful_widget(buffers, preview_and_buffers[1], list_state);
 }
