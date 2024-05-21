@@ -15,13 +15,11 @@ mod config {
 }
 
 mod clipboard_sync {
-    // will neqed to poll for changes in hopes on not hogging the cpu
+    // will need to poll for changes in hopes on not hogging the cpu
 }
 
 mod grammer {
-    use ratatui::buffer;
-
-    // the grammer for
+    // the core grammer
     use crate::config::Base;
 
     pub fn check(line: &str, cap: Base) -> Vec<u8> {
@@ -47,6 +45,7 @@ mod grammer {
             if ignore(*token) {
                 continue;
             }
+            // this should work and yeild only a single digit number for the given base
             if let Some(number) = char::from(*token).to_digit(radix) {
                 dbg!(number);
                 buffers.push(number as u8);
@@ -135,14 +134,15 @@ fn main() {
     //         _ => panic!(),
     //     }
     // }
-    // { // testing the compose ui
-    //     use crate::composer::main;
-    //     main();
-    // }
     {
-        // testing the grammer
-        use crate::config::Base;
-        use crate::grammer::check;
-        check("1.2.3.4.5", Base::Hexa);
+        // testing the compose ui
+        use crate::composer::render;
+        render();
     }
+    // {
+    //     // testing the grammer
+    //     use crate::config::Base;
+    //     use crate::grammer::check;
+    //     check("1.2.3.4.5", Base::Hexa);
+    // }
 }
