@@ -63,6 +63,42 @@ fn handle_events(text: &mut PromptText) -> io::Result<bool> {
     Ok(false)
 }
 
+fn process_items<'a>(items: Vec<String>) -> impl Fn(Rect) -> Vec<Text<'a>> {
+    move |area: Rect| -> Vec<Text<'a>> {
+        let (max_width, max_height) = (area.width, area.height);
+        items
+            .iter()
+            .map(|blob| {
+                let lines = blob.split('\n');
+                lines
+                    .take(max_height as usize / 6)
+                    .map(|line| {
+                        if line.len() < max_width.into() {
+                            line
+                        } else {
+                            line.get(0..max_width.into())
+                                .expect("Some error in truncation")
+                        }
+                    })
+                    .fold(String::new(), |mut acc, line| {
+                        acc.push_str(line);
+                        acc.push('\n');
+                        acc
+                    })
+            })
+            .enumerate()
+            .map(|(i, x)| {
+                let text = Text::from(x);
+                if i % 2 == 0 {
+                    text.style(Style::default().bg(Color::Black))
+                } else {
+                    text.style(Style::default().bg(Color::DarkGray))
+                }
+            })
+            .collect()
+    }
+}
+
 pub fn render(items: Vec<String>) -> io::Result<()> {
     // init for terminal
     queue!(stdout(), EnterAlternateScreen)?;
@@ -73,14 +109,13 @@ pub fn render(items: Vec<String>) -> io::Result<()> {
     let mut prompt_string = PromptText::new();
     let mut list_state = ListState::default();
     // items will be populated by the fetch from the database
+    let items = process_items(items);
 
     // the main loop
     let mut should_quit = false;
     while !should_quit {
         should_quit = handle_events(&mut prompt_string)?;
-        terminal.draw(|frame| {
-            layout_and_render(frame, &prompt_string, &mut list_state, items.clone())
-        })?;
+        terminal.draw(|frame| layout_and_render(frame, &prompt_string, &mut list_state, &items))?;
     }
 
     // deinit for terminal
@@ -90,11 +125,11 @@ pub fn render(items: Vec<String>) -> io::Result<()> {
 }
 
 // the main frame
-fn layout_and_render(
+fn layout_and_render<'a>(
     frame: &mut Frame,
     prompt: &PromptText,
     list_state: &mut ListState,
-    items: Vec<Text>,
+    items: &impl Fn(Rect) -> Vec<Text<'a>>,
 ) {
     let block_config = |title| {
         Block::default()
@@ -103,10 +138,6 @@ fn layout_and_render(
             .title(title)
             .borders(Borders::ALL)
     };
-    let buffers = List::new(items)
-        .block(block_config("Buffers"))
-        .highlight_style(Style::default().add_modifier(Modifier::BOLD | Modifier::ITALIC))
-        .direction(ListDirection::TopToBottom);
 
     // TODO: seprate the layout from or delay the process till the last moment
     let main_layout = Layout::default()
@@ -119,7 +150,13 @@ fn layout_and_render(
         .split(main_layout[1]);
 
     let prompt = Paragraph::new(prompt.dump()).block(block_config("Prompt"));
-    let preview = Paragraph::new("Preview").block(block_config("Preview"));
+    //TODO: Need to work on the preview too.
+    let preview = Paragraph::new("").block(block_config("Preview"));
+
+    let buffers = List::new(items(preview_and_buffers[1]))
+        .block(block_config("Buffers"))
+        .highlight_style(Style::default().add_modifier(Modifier::BOLD | Modifier::ITALIC))
+        .direction(ListDirection::TopToBottom);
 
     frame.render_widget(prompt, main_layout[0]);
     frame.render_widget(preview, preview_and_buffers[0]);
