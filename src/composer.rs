@@ -63,6 +63,8 @@ fn handle_events(text: &mut PromptText) -> io::Result<bool> {
     Ok(false)
 }
 
+// for the buffer's view
+// TODO: this should be immune to  the trickery of blank spaces
 fn process_items<'a>(items: Vec<String>) -> impl Fn(Rect) -> Vec<Text<'a>> {
     move |area: Rect| -> Vec<Text<'a>> {
         let (max_width, max_height) = (area.width, area.height);
@@ -99,7 +101,10 @@ fn process_items<'a>(items: Vec<String>) -> impl Fn(Rect) -> Vec<Text<'a>> {
     }
 }
 
-pub fn render(items: Vec<String>) -> io::Result<()> {
+// TODO: The preview will require some smart trickery as the good old'
+// appending will not do the job, and honestly should not be used
+
+pub fn compose_ui(items: Vec<String>, parser: impl Fn(&str) -> Vec<u8>) -> io::Result<()> {
     // init for terminal
     queue!(stdout(), EnterAlternateScreen)?;
     enable_raw_mode()?;
@@ -116,6 +121,9 @@ pub fn render(items: Vec<String>) -> io::Result<()> {
     while !should_quit {
         should_quit = handle_events(&mut prompt_string)?;
         terminal.draw(|frame| layout_and_render(frame, &prompt_string, &mut list_state, &items))?;
+        parser(&prompt_string.return_input())
+            .into_iter()
+            .for_each(|x| list_state.select(Some(x as usize)));
     }
 
     // deinit for terminal
@@ -161,4 +169,59 @@ fn layout_and_render<'a>(
     frame.render_widget(prompt, main_layout[0]);
     frame.render_widget(preview, preview_and_buffers[0]);
     frame.render_stateful_widget(buffers, preview_and_buffers[1], list_state);
+}
+
+#[test]
+fn test_compose_ui() {
+    // testing the compose ui
+    use crate::composer::compose_ui;
+    use crate::config::Base;
+    use crate::grammer::check;
+
+    let parser = check(Base::Octal);
+    compose_ui(
+        vec![
+            "pub fn render(items: Vec<String>) -> io::Result<()> k
+    // init for terminal
+    queue!(stdout(), EnterAlternateScreen)?;
+    enable_raw_mode()?;
+    let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
+
+    // TODO: maby this should be passed into the function rather than declared here
+    let mut prompt_string = PromptText::new();
+    let mut list_state = ListState::default();
+    // items will be populated by the fetch from the database
+    let items = process_items(items);
+    
+    // the main loop
+    ",
+            "{
+    if event::poll(std::time::Duration::from_millis(500))? {
+        if let Event::Key(key) = event::read()? {
+            if key.kind == event::KeyEventKind::Press {
+                if KeyCode::Enter == key.code || KeyCode::Esc == key.code {
+                    return Ok(true);
+                } else {
+                    if let KeyCode::Char(x) = key.code {
+                        text.push(x);
+                        return Ok(false);
+                    } else if let KeyCode::Backspace = key.code {
+                        text.pop();
+                        return Ok(false);
+                    } else {
+                        dbg!(key.code);
+                        return Ok(false);
+                    }
+                }
+            }
+        }
+    }
+    Ok(false)
+}",
+        ]
+        .into_iter()
+        .map(|x| x.to_string())
+        .collect(),
+        parser,
+    );
 }
