@@ -1,8 +1,9 @@
+use std::fmt::Debug;
 
-use clap::{arg, ArgMatches, Command};
+use clap::{Arg, ArgAction, Command};
 
 #[derive(Debug)]
-pub enum ActionForCore {
+pub enum Action {
     // TODO: rename the enum
     /// Will show top 8 or 10 or 16 buffers
     Show,
@@ -16,28 +17,30 @@ pub enum ActionForCore {
     Compose,
 }
 
-pub fn argument() -> ActionForCore {
-    let collect_argument = |buffers: &ArgMatches| {
-        let buf = buffers.get_raw("BUFFERS").unwrap();
-        buf.fold(String::new(), |mut arg, x| {
-            arg.push_str(x.to_str().expect("Convertion failed"));
-            arg.push(' ');
-            arg
-        })
-    };
+pub fn argument() -> Option<Action> {
     let matches = cli().get_matches();
-    match matches.subcommand() {
-        Some(("show", _)) => ActionForCore::Show,
-        Some(("compose", _)) => ActionForCore::Compose,
-        Some(("copy", buffers)) => {
-            let parsed_arg = collect_argument(buffers);
-            ActionForCore::Copy(parsed_arg)
+    // dbg!(&matches.get_one::<String>("paste").unwrap());
+    dbg!(&matches);
+    dbg!(matches.ids());
+    // panic!("Done there");
+    match matches.ids().nth(0).map(|id| id.as_str()).unwrap() {
+        "show" => Some(Action::Show),
+        "compose" => Some(Action::Compose),
+        "paste" => {
+            let argument: String = matches
+                .get_one::<String>("paste")
+                .map(|x| x.to_owned())
+                .unwrap_or_default();
+            Some(Action::Paste(argument))
         }
-        Some(("paste", buffers)) => {
-            let parsed_arg = collect_argument(buffers);
-            ActionForCore::Paste(parsed_arg)
+        "copy" => {
+            let argument: String = matches
+                .get_one::<String>("copy")
+                .map(|x| x.to_owned())
+                .unwrap_or_default();
+            Some(Action::Copy(argument))
         }
-        _ => unreachable!(),
+        _ => None,
     }
 }
 
@@ -45,12 +48,37 @@ fn cli() -> Command {
     Command::new("sb")
         .about("New kind of clipboard")
         .arg_required_else_help(true)
-        .subcommand(
-            Command::new("paste").about("Paste text from buffer").arg(
-                arg!(<BUFFERS> ... "series of buffer").value_parser(clap::value_parser!(String)),
-            ),
+        .arg(
+            Arg::new("copy")
+                .exclusive(true)
+                .short('i')
+                .long("copy")
+                .id("copy")
+                .value_parser(clap::value_parser!(String)),
         )
-        .subcommand(Command::new("copy").about("Copy text to buffer"))
-        .subcommand(Command::new("show").about("Shows the recent buffers"))
-        .subcommand(Command::new("compose").about("Compose existing buffer to make a new paste"))
+        .arg(
+            Arg::new("paste")
+                .exclusive(true)
+                .short('o')
+                .long("paste")
+                .id("paste")
+                .default_value("0")
+                .value_parser(clap::value_parser!(String)),
+        )
+        .arg(
+            Arg::new("compose")
+                .exclusive(true)
+                .short('c')
+                .long("compose")
+                .id("compose")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("show")
+                .exclusive(true)
+                .short('s')
+                .long("show")
+                .id("show")
+                .action(ArgAction::SetTrue),
+        )
 }

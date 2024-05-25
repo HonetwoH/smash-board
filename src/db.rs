@@ -29,7 +29,7 @@ const DB_PATH: &str = "/tmp/smash.db";
 const LIMIT: usize = 8;
 
 impl Db {
-    pub fn new() -> Result<Self> {
+    pub fn new_connection() -> Result<Self> {
         let path = Path::new(DB_PATH);
         let (conn, top_id) = if !path.exists() {
             let conn = Connection::open(path)?;
@@ -91,33 +91,26 @@ impl Db {
             .map(|x| {
                 // TODO: make sure that error from this part dont get unnoticed
                 match x {
+                    // get(0) is fine because thier can be only one value associated with an index
                     Ok(y) => query.query_row([y], |row| row.get(0)), // this part generates errors
-                    Err(_) => Ok(String::new()),
+                    Err(_) => Ok(Blob::new()),
                 }
             })
             .collect()
     }
-
-    pub fn show(&self, range: usize) {
-        let mut recent = self.fetch(Vec::from_iter(0..range)).into_iter();
-        let mut index = 1;
-        while let Some(Ok(buf)) = recent.next() {
-            println!("\t{}\t{}", index, buf);
-            index += 1;
-        }
-    }
 }
-// #[test]
-// fn test() {
-//     let db = Db::new().unwrap();
-//     let _ = dbg!(db.push(String::from("Hello World")));
-//     let _ = dbg!(db.push(String::from("Hello Mars")));
-//     let _ = dbg!(db.push(String::from("Hello Mars")));
-//     let _ = dbg!(db.push(String::from("Hello Venus")));
-//     let _ = dbg!(db.push(String::from("Hello Jupiter")));
-//     let _ = dbg!(db.push(String::from("Hello Neptune")));
-//     let _ = dbg!(db.push(String::from("Hello Mercury")));
-//     let _ = dbg!(db.push(String::from("Hello Uranas")));
-//     db.show(8);
-//     dbg!(db.fetch(vec![0, 1, 2, 3]));
-// }
+
+#[test]
+fn db_connection() {
+    let db = Db::new_connection().unwrap();
+    let _ = dbg!(db.push(Blob::from("Hello World")));
+    let _ = dbg!(db.push(Blob::from("Hello Mars")));
+    let _ = dbg!(db.push(Blob::from("Hello Mars")));
+    let _ = dbg!(db.push(Blob::from("Hello Venus")));
+    let _ = dbg!(db.push(Blob::from("Hello Jupiter")));
+    let _ = dbg!(db.push(Blob::from("Hello Neptune")));
+    let _ = dbg!(db.push(Blob::from("Hello Mercury")));
+    let _ = dbg!(db.push(Blob::from("Hello Uranas")));
+    // db.show(8);
+    dbg!(db.fetch(vec![0, 1, 2, 3]));
+}

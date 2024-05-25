@@ -48,7 +48,7 @@ mod grammer {
                 }
                 // this should work and yeild only a single digit number for the given base
                 if let Some(number) = char::from(*token).to_digit(radix) {
-                    dbg!(number);
+                    // dbg!(number);
                     buffers.push(number as u8);
                 } else {
                     panic!("Number higher than the Base");
@@ -59,71 +59,44 @@ mod grammer {
     }
 }
 
+mod cli;
 mod composer;
-
-// mod cli;
-
-// mod db;
+mod db;
 
 fn main() {
-    // { // testing the main app
-    //     use crate::cli_app::{argument, ActionForCore};
-    //     use crate::db::Db;
+    use crate::cli::{argument, Action};
+    use crate::composer::compose_ui;
+    use crate::config::Base;
+    use crate::db::Db;
+    use crate::grammer::check;
 
-    //     let pastesbin = Db::new().unwrap();
-    //     match argument() {
-    //         ActionForCore::Show => pastesbin.show(8),
-    //         ActionForCore::Compose => {}
-    //         ActionForCore::Paste(new_paste) => {
-    //             dbg!(&new_paste);
-    //         }
-    //         _ => panic!(),
-    //     }
-    // }
-    {
-        // testing the compose ui
-        use crate::composer::render;
-        render(vec!["pub fn render(items: Vec<String>) -> io::Result<()> k
-    // init for terminal
-    queue!(stdout(), EnterAlternateScreen)?;
-    enable_raw_mode()?;
-    let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
-
-    // TODO: maby this should be passed into the function rather than declared here
-    let mut prompt_string = PromptText::new();
-    let mut list_state = ListState::default();
-    // items will be populated by the fetch from the database
-    let items = process_items(items);
-    
-    // the main loop
-    ", "{
-    if event::poll(std::time::Duration::from_millis(500))? {
-        if let Event::Key(key) = event::read()? {
-            if key.kind == event::KeyEventKind::Press {
-                if KeyCode::Enter == key.code || KeyCode::Esc == key.code {
-                    return Ok(true);
-                } else {
-                    if let KeyCode::Char(x) = key.code {
-                        text.push(x);
-                        return Ok(false);
-                    } else if let KeyCode::Backspace = key.code {
-                        text.pop();
-                        return Ok(false);
-                    } else {
-                        dbg!(key.code);
-                        return Ok(false);
-                    }
-                }
-            }
+    let parser = check(Base::Octal);
+    let pastes_db: Db = Db::new_connection().unwrap();
+    match argument().unwrap() {
+        // Action::Show => pastes_db.show(8),
+        Action::Compose => {
+            let items = pastes_db
+                .fetch(Vec::from_iter(0..8))
+                .into_iter()
+                .map(|x| x.unwrap_or_default())
+                .collect();
+            _ = compose_ui(items, parser);
         }
+        Action::Paste(from_buffers) => {
+            let buffers = parser(&from_buffers)
+                .into_iter()
+                .map(|x| x as usize)
+                .collect();
+            pastes_db
+                .fetch(buffers)
+                .into_iter()
+                .map(|x| x.unwrap_or_default())
+                .for_each(|x| println!("{}", x));
+        }
+        Action::Copy(new) => {
+            dbg!(&new);
+            pastes_db.push(new).unwrap();
+        }
+        _ => panic!(),
     }
-    Ok(false)
-}"].into_iter().map(|x| x.to_string()).collect());
-    }
-    // {
-    //     // testing the grammer
-    //     use crate::config::Base;
-    //     use crate::grammer::check;
-    //     check("1.2.3.4.5", Base::Hexa);
-    // }
 }
