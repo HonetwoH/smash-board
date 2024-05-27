@@ -1,84 +1,73 @@
 use std::fmt::Debug;
 
-use clap::{Arg, ArgAction, Command};
+use clap::{Parser, Subcommand};
 
-#[derive(Debug)]
-pub enum Action {
-    // TODO: rename the enum
-    /// Will show top 8 or 10 or 16 buffers
+#[derive(Parser, Debug)]
+#[clap(version, about, long_about = None, arg_required_else_help = true)]
+struct Arg {
+    #[clap(subcommand)]
+    action: Action,
+}
+#[derive(Subcommand, Debug)]
+enum Action {
+    /// Will show upto 6, 8, 10 or 16 buffers
     Show,
-    /// Will paste the content of specified buffer
-    Paste(String),
-    /// Will copy the given string to the db
-    Copy(String),
-    /// compose action will only handle the compostion in
-    /// iteractive manner and will push it resultant to the
-    /// top or on stdout depending to command
+    /// Paste the content (of specified buffer)
+    Paste {
+        #[clap(value_enum)]
+        buffer_sequence: Option<String>,
+    },
+    /// Copy the given string to the db
+    Copy {
+        #[clap(value_enum)]
+        input_text: String,
+    },
+    /// Compose together buffer interactively
     Compose,
 }
 
-pub fn argument() -> Option<Action> {
-    let matches = cli().get_matches();
-    // dbg!(&matches.get_one::<String>("paste").unwrap());
-    dbg!(&matches);
-    dbg!(matches.ids());
-    // panic!("Done there");
-    match matches.ids().nth(0).map(|id| id.as_str()).unwrap() {
-        "show" => Some(Action::Show),
-        "compose" => Some(Action::Compose),
-        "paste" => {
-            let argument: String = matches
-                .get_one::<String>("paste")
-                .map(|x| x.to_owned())
-                .unwrap_or_default();
-            Some(Action::Paste(argument))
+pub(crate) fn args() {
+    let args = match Arg::try_parse() {
+        Ok(a) => a,
+        Err(e) => {
+            let _ = e.print();
+            std::process::exit(0);
         }
-        "copy" => {
-            let argument: String = matches
-                .get_one::<String>("copy")
-                .map(|x| x.to_owned())
-                .unwrap_or_default();
-            Some(Action::Copy(argument))
+    };
+    match args.action {
+        Action::Paste {
+            buffer_sequence: Some(seq),
+        } => {
+            // parse the buffer sequence
+            dbg!(pasrse_buf_seq(seq, 8));
         }
-        _ => None,
+        Action::Copy { input_text } => {
+            //TODO: check the mime type
+        }
+        _ => {}
     }
 }
 
-fn cli() -> Command {
-    Command::new("sb")
-        .about("New kind of clipboard")
-        .arg_required_else_help(true)
-        .arg(
-            Arg::new("copy")
-                .exclusive(true)
-                .short('i')
-                .long("copy")
-                .id("copy")
-                .value_parser(clap::value_parser!(String)),
-        )
-        .arg(
-            Arg::new("paste")
-                .exclusive(true)
-                .short('o')
-                .long("paste")
-                .id("paste")
-                .default_value("0")
-                .value_parser(clap::value_parser!(String)),
-        )
-        .arg(
-            Arg::new("compose")
-                .exclusive(true)
-                .short('c')
-                .long("compose")
-                .id("compose")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("show")
-                .exclusive(true)
-                .short('s')
-                .long("show")
-                .id("show")
-                .action(ArgAction::SetTrue),
-        )
+#[derive(Debug)]
+struct ValueOverBase {}
+
+fn pasrse_buf_seq(seq: String, base: u32) -> Result<Vec<u8>, ValueOverBase> {
+    // all the numbers will be of single digit in the base the user choose in config
+    seq.chars()
+        .into_iter()
+        .map(|n| n.to_digit(base))
+        .fold(Ok(Vec::new()), |acc, x| {
+            if acc.is_ok() {
+                if let Some(n) = x {
+                    acc.map(|mut ac| {
+                        ac.push(n as u8);
+                        ac
+                    })
+                } else {
+                    Err(ValueOverBase {})
+                }
+            } else {
+                acc
+            }
+        })
 }
