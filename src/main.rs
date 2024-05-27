@@ -11,6 +11,8 @@ mod config {
 
     struct Config {
         available_buffers: Base,
+        // in seconds
+        polling_rate: u8,
     }
 }
 
@@ -60,10 +62,11 @@ mod grammer {
 }
 
 mod cli;
-mod composer;
-mod db;
+// mod composer;
+// mod db;
 
 fn main() {
+    /*
     use crate::cli::{argument, Action};
     use crate::composer::compose_ui;
     use crate::config::Base;
@@ -99,4 +102,7 @@ fn main() {
         }
         _ => panic!(),
     }
+    */
+    use cli::args;
+    args();
 }
