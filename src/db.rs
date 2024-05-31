@@ -21,6 +21,7 @@ pub struct Db {
 
 enum IndexErrors {
     NotEnoughEntries,
+    NotPopulatedYet,
     ExceededLimit,
 }
 
@@ -69,10 +70,12 @@ impl Db {
         } else if idx > self.top_id {
             Err(IndexErrors::NotEnoughEntries)
         } else {
-            unreachable!(
-                "Found another edge case right here:\n Top: {},\t Requested: {}",
-                self.top_id, idx
-            )
+            // this also shows up incase of no DB present
+            // unreachable!(
+            //     "Found another edge case right here:\n Top: {},\t Requested: {}",
+            //     self.top_id, idx
+            // )
+            Err(IndexErrors::NotPopulatedYet)
         }
     }
 
@@ -84,13 +87,14 @@ impl Db {
     }
 
     // fetch is expected to work with batch of blob indices
-    pub fn fetch(&self) -> Vec<Blob> {
+    pub fn fetch(&self, blobs: Vec<u8>) -> Vec<Blob> {
         let mut query = self
             .conn
             .prepare("SELECT paste FROM pastes WHERE id = ?1")
             .unwrap();
-        (0..self.base as usize)
-            .map(|x| self.compute_index(x))
+        blobs
+            .into_iter()
+            .map(|x| self.compute_index(x as usize))
             .filter(|x| x.is_ok())
             .map(|x| {
                 // TODO: make sure that error from this part dont get unnoticed
@@ -104,9 +108,14 @@ impl Db {
     }
 
     pub fn peek(&self) -> Option<Blob> {
-        let fetched = self.fetch();
+        let fetched = self.fetch(Vec::from([0]));
         assert!(fetched.len() == 1);
         fetched.get(0).map(|x| x.clone())
+    }
+
+    pub fn show(&self) -> Vec<Blob> {
+        let items = self.fetch(Vec::from_iter(0..self.base));
+        items
     }
 }
 
@@ -123,5 +132,5 @@ fn db_connection() {
     let _ = dbg!(db.push(Blob::from("Hello Mercury")));
     let _ = dbg!(db.push(Blob::from("Hello Uranas")));
 
-    dbg!(db.fetch());
+    dbg!(db.show());
 }
