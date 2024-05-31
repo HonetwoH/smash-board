@@ -1,3 +1,4 @@
+use crate::config::Base;
 use rusqlite::{params, Connection, Result};
 use std::path::Path;
 
@@ -15,6 +16,7 @@ use std::path::Path;
 pub struct Db {
     conn: Connection,
     top_id: usize,
+    base: u8,
 }
 
 enum IndexErrors {
@@ -24,12 +26,11 @@ enum IndexErrors {
 
 type Blob = String;
 
+//TODO: make this path ramdom
 const DB_PATH: &str = "/tmp/smash.db";
-//TODO: change this so that it take the input from config
-const LIMIT: usize = 8;
 
 impl Db {
-    pub fn new_connection() -> Result<Self> {
+    pub fn new_connection(base: Base) -> Result<Self> {
         let path = Path::new(DB_PATH);
         let (conn, top_id) = if !path.exists() {
             let conn = Connection::open(path)?;
@@ -50,17 +51,20 @@ impl Db {
                 };
             (conn, top_id)
         };
-        Ok(Self { conn, top_id })
+        Ok(Self {
+            conn,
+            top_id,
+            base: base as u8,
+        })
     }
 
     // compute index by respecting the constraints imposed
     // i.e is octal or hexadecimal
-    // TODO: Make sure that there is the db does not change right underneath the function call
     fn compute_index(&self, idx: usize) -> Result<usize, IndexErrors> {
         //TODO: This method should return error along with the top_id
-        if idx <= LIMIT && self.top_id > idx {
+        if idx < self.base.into() && self.top_id > idx {
             Ok(self.top_id - idx)
-        } else if idx > LIMIT {
+        } else if idx > self.base.into() {
             Err(IndexErrors::ExceededLimit)
         } else if idx > self.top_id {
             Err(IndexErrors::NotEnoughEntries)
@@ -80,29 +84,36 @@ impl Db {
     }
 
     // fetch is expected to work with batch of blob indices
-    pub fn fetch(&self, blob_idxs: Vec<usize>) -> Vec<Result<Blob>> {
+    pub fn fetch(&self) -> Vec<Blob> {
         let mut query = self
             .conn
             .prepare("SELECT paste FROM pastes WHERE id = ?1")
             .unwrap();
-        blob_idxs
-            .into_iter()
+        (0..self.base as usize)
             .map(|x| self.compute_index(x))
+            .filter(|x| x.is_ok())
             .map(|x| {
                 // TODO: make sure that error from this part dont get unnoticed
                 match x {
                     // get(0) is fine because thier can be only one value associated with an index
-                    Ok(y) => query.query_row([y], |row| row.get(0)), // this part generates errors
-                    Err(_) => Ok(Blob::new()),
+                    Ok(y) => query.query_row([y], |row| row.get(0)).unwrap(), // this part generates errors
+                    Err(_) => unreachable!(),
                 }
             })
             .collect()
+    }
+
+    pub fn peek(&self) -> Option<Blob> {
+        let fetched = self.fetch();
+        assert!(fetched.len() == 1);
+        fetched.get(0).map(|x| x.clone())
     }
 }
 
 #[test]
 fn db_connection() {
-    let db = Db::new_connection().unwrap();
+    let db = Db::new_connection(Base::HexaDecimal).unwrap();
+
     let _ = dbg!(db.push(Blob::from("Hello World")));
     let _ = dbg!(db.push(Blob::from("Hello Mars")));
     let _ = dbg!(db.push(Blob::from("Hello Mars")));
@@ -111,6 +122,6 @@ fn db_connection() {
     let _ = dbg!(db.push(Blob::from("Hello Neptune")));
     let _ = dbg!(db.push(Blob::from("Hello Mercury")));
     let _ = dbg!(db.push(Blob::from("Hello Uranas")));
-    // db.show(8);
-    dbg!(db.fetch(vec![0, 1, 2, 3]));
+
+    dbg!(db.fetch());
 }

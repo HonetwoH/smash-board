@@ -6,10 +6,10 @@ use clap::{Parser, Subcommand};
 #[clap(version, about, long_about = None, arg_required_else_help = true)]
 struct Arg {
     #[clap(subcommand)]
-    action: Action,
+    action: Command,
 }
 #[derive(Subcommand, Debug)]
-enum Action {
+enum Command {
     /// Will show upto 6, 8, 10 or 16 buffers
     Show,
     /// Paste the content (of specified buffer)
@@ -26,7 +26,14 @@ enum Action {
     Compose,
 }
 
-pub(crate) fn args() {
+pub(super) enum Action {
+    Paste(Option<String>),
+    Copy(String),
+    Show,
+    Compose,
+}
+
+pub(super) fn args() -> Action {
     let args = match Arg::try_parse() {
         Ok(a) => a,
         Err(e) => {
@@ -35,39 +42,15 @@ pub(crate) fn args() {
         }
     };
     match args.action {
-        Action::Paste {
-            buffer_sequence: Some(seq),
-        } => {
+        Command::Paste { buffer_sequence } => {
             // parse the buffer sequence
-            dbg!(pasrse_buf_seq(seq, 8));
+            Action::Paste(buffer_sequence)
         }
-        Action::Copy { input_text } => {
+        Command::Copy { input_text } => {
             //TODO: check the mime type
+            Action::Copy(input_text)
         }
-        _ => {}
+        Command::Show => Action::Show,
+        Command::Compose => Action::Compose,
     }
-}
-
-#[derive(Debug)]
-struct ValueOverBase {}
-
-fn pasrse_buf_seq(seq: String, base: u32) -> Result<Vec<u8>, ValueOverBase> {
-    // all the numbers will be of single digit in the base the user choose in config
-    seq.chars()
-        .into_iter()
-        .map(|n| n.to_digit(base))
-        .fold(Ok(Vec::new()), |acc, x| {
-            if acc.is_ok() {
-                if let Some(n) = x {
-                    acc.map(|mut ac| {
-                        ac.push(n as u8);
-                        ac
-                    })
-                } else {
-                    Err(ValueOverBase {})
-                }
-            } else {
-                acc
-            }
-        })
 }
