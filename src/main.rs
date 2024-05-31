@@ -24,7 +24,9 @@ mod grammer {
     // the core grammer
     use crate::config::Base;
 
-    pub fn check(cap: Base) -> impl Fn(&str) -> Vec<u8> {
+    pub(crate) struct HigherNumber {}
+
+    pub(crate) fn check(cap: Base) -> impl Fn(&str) -> Vec<Result<u8, HigherNumber>> {
         move |line: &str| {
             let points = line.as_bytes();
             let mut buffers = vec![];
@@ -43,9 +45,9 @@ mod grammer {
                 }
                 // this should work and yeild only a single digit number for the given base
                 if let Some(number) = char::from(*token).to_digit(cap as u32) {
-                    buffers.push(number as u8);
+                    buffers.push(Ok(number as u8));
                 } else {
-                    panic!("Number higher than the Base");
+                    buffers.push(Err(HigherNumber {}));
                 }
             }
             buffers
@@ -68,9 +70,13 @@ fn main() {
     let parser = check(base);
     let pastes_db: Db = Db::new_connection(base).unwrap();
     match args() {
-        Action::Show => todo!("Implement the preview"),
+        Action::Show => {
+            pastes_db.show().into_iter().for_each(|x| {
+                println!("{}", x);
+            });
+        }
         Action::Compose => {
-            let items = pastes_db.fetch();
+            let items = pastes_db.show();
             let _ = compose_ui(items, parser, base);
         }
         Action::Paste(_bufs) => {
