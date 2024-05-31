@@ -1,4 +1,5 @@
 // the interative panel for the compose command
+use crate::config::Base;
 use crossterm::{
     event::{self, Event, KeyCode},
     queue,
@@ -40,7 +41,7 @@ impl PromptText {
 }
 
 fn handle_events(text: &mut PromptText) -> io::Result<bool> {
-    if event::poll(std::time::Duration::from_millis(500))? {
+    if event::poll(std::time::Duration::from_millis(50))? {
         if let Event::Key(key) = event::read()? {
             if key.kind == event::KeyEventKind::Press {
                 if KeyCode::Enter == key.code || KeyCode::Esc == key.code {
@@ -63,34 +64,35 @@ fn handle_events(text: &mut PromptText) -> io::Result<bool> {
     Ok(false)
 }
 
-// for the buffer's view
+// for the buffer's view and the preview pane but without the highlight maybe
 // TODO: this should be immune to  the trickery of blank spaces
-fn process_items<'a>(items: Vec<String>) -> impl Fn(Rect) -> Vec<Text<'a>> {
+fn process_items<'a>(items: Vec<String>, base: Base) -> impl Fn(Rect) -> Vec<Text<'a>> {
     move |area: Rect| -> Vec<Text<'a>> {
         let (max_width, max_height) = (area.width, area.height);
         items
             .iter()
-            .map(|blob| {
-                let lines = blob.split('\n');
-                lines
-                    .take(max_height as usize / 6)
-                    .map(|line| {
-                        if line.len() < max_width.into() {
-                            line
-                        } else {
-                            line.get(0..max_width.into())
-                                .expect("Some error in truncation")
-                        }
-                    })
-                    .fold(String::new(), |mut acc, line| {
-                        acc.push_str(line);
-                        acc.push('\n');
-                        acc
-                    })
-            })
+            // TODO: improve this
+            // .map(|blob| {
+            //     let lines = blob.split('\n');
+            //     lines
+            //         .take((max_height as usize) / base as usize)
+            //         .map(|line| {
+            //             if line.len() < max_width.into() {
+            //                 line
+            //             } else {
+            //                 line.get(0..max_width.into())
+            //                     .expect("Some error in truncation")
+            //             }
+            //         })
+            //         .fold(String::new(), |mut acc, line| {
+            //             acc.push_str(line);
+            //             acc.push('\n');
+            //             acc
+            //         })
+            // })
             .enumerate()
             .map(|(i, x)| {
-                let text = Text::from(x);
+                let text = Text::from(x.to_owned());
                 if i % 2 == 0 {
                     text.style(Style::default().bg(Color::Black))
                 } else {
@@ -101,20 +103,23 @@ fn process_items<'a>(items: Vec<String>) -> impl Fn(Rect) -> Vec<Text<'a>> {
     }
 }
 
-// TODO: The preview will require some smart trickery as the good old'
-// appending will not do the job, and honestly should not be used
+// The preview widget this will used not only here but also in the the cli command show
+// the the printing will be inlined hence it need 2 mode and nice interaface with db
+// fn preview(items: Vec<&String>) { }
 
-pub fn compose_ui(items: Vec<String>, parser: impl Fn(&str) -> Vec<u8>) -> io::Result<()> {
+pub fn compose_ui(
+    items: Vec<String>,
+    parser: impl Fn(&str) -> Vec<u8>,
+    base: Base,
+) -> io::Result<()> {
     // init for terminal
     queue!(stdout(), EnterAlternateScreen)?;
     enable_raw_mode()?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
-
-    // TODO: maby this should be passed into the function rather than declared here
     let mut prompt_string = PromptText::new();
     let mut list_state = ListState::default();
     // items will be populated by the fetch from the database
-    let items = process_items(items);
+    let items = process_items(items, base);
 
     // the main loop
     let mut should_quit = false;
@@ -147,7 +152,6 @@ fn layout_and_render<'a>(
             .borders(Borders::ALL)
     };
 
-    // TODO: seprate the layout from or delay the process till the last moment
     let main_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints(vec![Constraint::Length(3), Constraint::Fill(1)])
@@ -158,7 +162,6 @@ fn layout_and_render<'a>(
         .split(main_layout[1]);
 
     let prompt = Paragraph::new(prompt.dump()).block(block_config("Prompt"));
-    //TODO: Need to work on the preview too.
     let preview = Paragraph::new("").block(block_config("Preview"));
 
     let buffers = List::new(items(preview_and_buffers[1]))
@@ -169,59 +172,4 @@ fn layout_and_render<'a>(
     frame.render_widget(prompt, main_layout[0]);
     frame.render_widget(preview, preview_and_buffers[0]);
     frame.render_stateful_widget(buffers, preview_and_buffers[1], list_state);
-}
-
-#[test]
-fn test_compose_ui() {
-    // testing the compose ui
-    use crate::composer::compose_ui;
-    use crate::config::Base;
-    use crate::grammer::check;
-
-    let parser = check(Base::Octal);
-    compose_ui(
-        vec![
-            "pub fn render(items: Vec<String>) -> io::Result<()> k
-    // init for terminal
-    queue!(stdout(), EnterAlternateScreen)?;
-    enable_raw_mode()?;
-    let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
-
-    // TODO: maby this should be passed into the function rather than declared here
-    let mut prompt_string = PromptText::new();
-    let mut list_state = ListState::default();
-    // items will be populated by the fetch from the database
-    let items = process_items(items);
-    
-    // the main loop
-    ",
-            "{
-    if event::poll(std::time::Duration::from_millis(500))? {
-        if let Event::Key(key) = event::read()? {
-            if key.kind == event::KeyEventKind::Press {
-                if KeyCode::Enter == key.code || KeyCode::Esc == key.code {
-                    return Ok(true);
-                } else {
-                    if let KeyCode::Char(x) = key.code {
-                        text.push(x);
-                        return Ok(false);
-                    } else if let KeyCode::Backspace = key.code {
-                        text.pop();
-                        return Ok(false);
-                    } else {
-                        dbg!(key.code);
-                        return Ok(false);
-                    }
-                }
-            }
-        }
-    }
-    Ok(false)
-}",
-        ]
-        .into_iter()
-        .map(|x| x.to_string())
-        .collect(),
-        parser,
-    );
 }

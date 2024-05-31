@@ -2,11 +2,12 @@ mod config {
     // this modules will read and interpret config which is
     // as of now just the number of available buffers
 
+    #[derive(Clone, Copy)]
     pub enum Base {
-        Hexa,
-        Octal,
-        Decimal,
-        HexaDecimal,
+        Hexa = 6,
+        Octal = 8,
+        Decimal = 10,
+        HexaDecimal = 16,
     }
 
     struct Config {
@@ -24,20 +25,12 @@ mod grammer {
     use crate::config::Base;
 
     pub fn check(cap: Base) -> impl Fn(&str) -> Vec<u8> {
-        let radix = match cap {
-            Base::Hexa => 6,
-            Base::Octal => 8,
-            Base::Decimal => 10,
-            Base::HexaDecimal => 16,
-        };
-
         move |line: &str| {
             let points = line.as_bytes();
             let mut buffers = vec![];
 
             let ignore = |x: u8| {
-                let x = char::from_u32(x as u32).unwrap();
-                let redundant = ['.', ' ', ','];
+                let redundant = [b'.', b' ', b','];
                 let mut found = false;
                 for i in redundant {
                     found |= if i == x { true } else { false };
@@ -49,8 +42,7 @@ mod grammer {
                     continue;
                 }
                 // this should work and yeild only a single digit number for the given base
-                if let Some(number) = char::from(*token).to_digit(radix) {
-                    // dbg!(number);
+                if let Some(number) = char::from(*token).to_digit(cap as u32) {
                     buffers.push(number as u8);
                 } else {
                     panic!("Number higher than the Base");
@@ -62,47 +54,32 @@ mod grammer {
 }
 
 mod cli;
-// mod composer;
-// mod db;
+mod composer;
+mod db;
 
 fn main() {
-    /*
-    use crate::cli::{argument, Action};
     use crate::composer::compose_ui;
     use crate::config::Base;
     use crate::db::Db;
     use crate::grammer::check;
+    use cli::{args, Action};
 
-    let parser = check(Base::Octal);
-    let pastes_db: Db = Db::new_connection().unwrap();
-    match argument().unwrap() {
-        // Action::Show => pastes_db.show(8),
+    let base = Base::HexaDecimal;
+    let parser = check(base);
+    let pastes_db: Db = Db::new_connection(base).unwrap();
+    match args() {
+        Action::Show => todo!("Implement the preview"),
         Action::Compose => {
-            let items = pastes_db
-                .fetch(Vec::from_iter(0..8))
-                .into_iter()
-                .map(|x| x.unwrap_or_default())
-                .collect();
-            _ = compose_ui(items, parser);
+            let items = pastes_db.fetch();
+            let _ = compose_ui(items, parser, base);
         }
-        Action::Paste(from_buffers) => {
-            let buffers = parser(&from_buffers)
-                .into_iter()
-                .map(|x| x as usize)
-                .collect();
-            pastes_db
-                .fetch(buffers)
-                .into_iter()
-                .map(|x| x.unwrap_or_default())
-                .for_each(|x| println!("{}", x));
+        Action::Paste(_bufs) => {
+            if let Some(paste) = pastes_db.peek() {
+                dbg!(paste);
+            };
         }
-        Action::Copy(new) => {
-            dbg!(&new);
-            pastes_db.push(new).unwrap();
+        Action::Copy(input) => {
+            let _ = pastes_db.push(input);
         }
-        _ => panic!(),
     }
-    */
-    use cli::args;
-    args();
 }
