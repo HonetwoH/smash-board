@@ -24,8 +24,10 @@ mod grammer {
     // the core grammer
     use crate::config::Base;
 
+    #[derive(Debug)]
     pub(crate) struct HigherNumber {}
 
+    //TODO: give some special meaning to each symbol
     pub(crate) fn check(cap: Base) -> impl Fn(&str) -> Vec<Result<u8, HigherNumber>> {
         move |line: &str| {
             let points = line.as_bytes();
@@ -56,10 +58,12 @@ mod grammer {
 }
 
 mod cli;
+#[cfg(feature = "tui")]
 mod composer;
 mod db;
 
 fn main() {
+    #[cfg(feature = "tui")]
     use crate::composer::compose_ui;
     use crate::config::Base;
     use crate::db::Db;
@@ -75,14 +79,23 @@ fn main() {
                 println!("{}", x);
             });
         }
+        #[cfg(feature = "tui")]
         Action::Compose => {
             let items = pastes_db.show();
             let _ = compose_ui(items, parser, base);
         }
-        Action::Paste(_bufs) => {
-            if let Some(paste) = pastes_db.peek() {
-                dbg!(paste);
-            };
+        Action::Paste(bufs) => {
+            if let Some(buf) = bufs {
+                let indices = parser(&buf);
+                if indices.iter().all(|x| x.is_ok()) {
+                    let buffers = indices.into_iter().map(|x| x.unwrap()).collect();
+                    pastes_db.fetch(buffers).iter().for_each(|x| {
+                        println!("{x}");
+                    })
+                } else {
+                    eprintln!("Make sure the all the buffer indices are valid.");
+                }
+            }
         }
         Action::Copy(input) => {
             let _ = pastes_db.push(input);
