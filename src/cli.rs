@@ -1,6 +1,5 @@
-use std::fmt::Debug;
-
 use clap::{Parser, Subcommand};
+use std::fmt::Debug;
 
 #[derive(Parser, Debug)]
 #[clap(version, about, long_about = None, arg_required_else_help = true)]
@@ -23,6 +22,7 @@ enum Command {
         input_text: String,
     },
     /// Compose together buffer interactively
+    #[cfg(feature = "tui")]
     Compose,
 }
 
@@ -30,6 +30,7 @@ pub(super) enum Action {
     Paste(Option<String>),
     Copy(String),
     Show,
+    #[cfg(feature = "tui")]
     Compose,
 }
 
@@ -51,6 +52,7 @@ pub(super) fn args() -> Action {
             Action::Copy(input_text)
         }
         Command::Show => Action::Show,
+        #[cfg(feature = "tui")]
         Command::Compose => Action::Compose,
     }
 }
