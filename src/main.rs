@@ -1,8 +1,10 @@
 mod config {
     // this modules will read and interpret config which is
     // as of now just the number of available buffers
+    use serde::Deserialize;
+    use std::{env, fs};
 
-    #[derive(Clone, Copy)]
+    #[derive(Clone, Copy, Debug, Deserialize)]
     pub enum Base {
         Hexa = 6,
         Octal = 8,
@@ -10,10 +12,39 @@ mod config {
         HexaDecimal = 16,
     }
 
-    struct Config {
-        available_buffers: Base,
+    #[derive(Deserialize)]
+    pub(super) struct Config {
+        pub(super) base: Base,
         // in seconds
-        polling_rate: u8,
+        polling_rate: u16,
+    }
+
+    pub fn read_config() -> Config {
+        let config_filename = {
+            let mut config_dir = env::var("XDG_CONFIG_HOME").expect(
+                "Could not find XDG_CONFIG_HOME variable in environment, or maybe it is overloaded",
+            );
+            config_dir.push_str("/smashboard.toml");
+            config_dir
+        };
+        let config_string = fs::read_to_string(config_filename)
+            .expect("Could not find the config file \"smashboard.toml\" in config directory.");
+        let config: Config = toml::from_str(&config_string).unwrap_or(Config {
+            base: Base::Octal,
+            polling_rate: 2,
+        });
+        config
+    }
+
+    #[test]
+    fn t() {
+        let toml_str = r#"
+        available_buffers = "Hexa"
+        polling_rate = 3
+        "#;
+
+        let decoded: Config = toml::from_str(toml_str).unwrap();
+        println!("{:#?}", decoded.base);
     }
 }
 
@@ -25,10 +56,12 @@ mod grammer {
     use crate::config::Base;
 
     #[derive(Debug)]
-    pub(crate) struct HigherNumber {}
+    pub(crate) enum ParsingErrors {
+        HigherOrderNumber,
+    }
 
-    //TODO: give some special meaning to each symbol
-    pub(crate) fn check(cap: Base) -> impl Fn(&str) -> Vec<Result<u8, HigherNumber>> {
+    //TODO: give some special meaning to each symbol add feature for graceful error returns
+    pub(crate) fn check(cap: Base) -> impl Fn(&str) -> Vec<Result<u8, ParsingErrors>> {
         move |line: &str| {
             let points = line.as_bytes();
             let mut buffers = vec![];
@@ -49,7 +82,7 @@ mod grammer {
                 if let Some(number) = char::from(*token).to_digit(cap as u32) {
                     buffers.push(Ok(number as u8));
                 } else {
-                    buffers.push(Err(HigherNumber {}));
+                    buffers.push(Err(ParsingErrors::HigherOrderNumber));
                 }
             }
             buffers
@@ -65,12 +98,13 @@ mod db;
 fn main() {
     #[cfg(feature = "tui")]
     use crate::composer::compose_ui;
-    use crate::config::Base;
+    use crate::config::read_config;
     use crate::db::Db;
     use crate::grammer::check;
     use cli::{args, Action};
 
-    let base = Base::HexaDecimal;
+    let config = read_config();
+    let base = config.base;
     let parser = check(base);
     let pastes_db: Db = Db::new_connection(base).unwrap();
     match args() {
@@ -94,6 +128,10 @@ fn main() {
                     })
                 } else {
                     eprintln!("Make sure the all the buffer indices are valid.");
+                }
+            } else {
+                if let Some(paste) = pastes_db.peek() {
+                    println!("{}", paste);
                 }
             }
         }

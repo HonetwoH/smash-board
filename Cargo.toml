@@ -10,8 +10,8 @@ tui = ["dep:ratatui", "dep:crossterm"]
 
 [dependencies]
 clap = { version = "4.5.4", features = ["derive"] }
-# confy = "0.6.1"
 crossterm =  {version = "0.27.0", optional = true}
 ratatui =  {version = "0.26.2", optional = true}
-# ctrlc = "3.4.2"
 rusqlite = "0.30.0"
+serde = { version = "1.0.201", features = ["derive"] }
+toml = "0.8.12"
