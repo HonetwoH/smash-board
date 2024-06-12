@@ -1,5 +1,4 @@
 // the interative panel for the compose command
-use crate::config::Base;
 use crossterm::{
     event::{self, Event, KeyCode},
     queue,
@@ -39,7 +38,31 @@ impl PromptText {
         &self.field[0..&self.field.len() - 3]
     }
 }
+/*
+// WIP
+struct BufferPane {
+    processed_buffers: Vec<String>,
+    // some internal stuff
+    // Block will take care of the borders and stuff
+    // draw in inner area
+    block: Block,
+    // Then will need something like list with scrollbar with mutliple select
+    scrollbar: Scrollbar,
+}
 
+// this will require a big state struct
+impl BufferPane {
+    fn new(items: Vec<String>) -> Self {
+        // Self {
+        //     processed_buffers: process(items),
+        //     ..
+        // }
+        todo!("")
+    }
+
+    fn process(items: Vec<String>) {}
+}
+*/
 fn handle_events(text: &mut PromptText) -> io::Result<bool> {
     if event::poll(std::time::Duration::from_millis(50))? {
         if let Event::Key(key) = event::read()? {
@@ -64,71 +87,18 @@ fn handle_events(text: &mut PromptText) -> io::Result<bool> {
     Ok(false)
 }
 
-// for the buffer's view and the preview pane but without the highlight maybe
-// TODO: this should be immune to  the trickery of blank spaces
-fn process_items<'a>(items: Vec<String>, base: Base) -> impl Fn(Rect) -> Vec<Text<'a>> {
-    move |area: Rect| -> Vec<Text<'a>> {
-        let (max_width, max_height) = (area.width, area.height);
-        items
-            .iter()
-            // TODO: improve this
-            // .map(|blob| {
-            //     let lines = blob.split('\n');
-            //     lines
-            //         .take((max_height as usize) / base as usize)
-            //         .map(|line| {
-            //             if line.len() < max_width.into() {
-            //                 line
-            //             } else {
-            //                 line.get(0..max_width.into())
-            //                     .expect("Some error in truncation")
-            //             }
-            //         })
-            //         .fold(String::new(), |mut acc, line| {
-            //             acc.push_str(line);
-            //             acc.push('\n');
-            //             acc
-            //         })
-            // })
-            .enumerate()
-            .map(|(i, x)| {
-                let text = Text::from(x.to_owned());
-                if i % 2 == 0 {
-                    text.style(Style::default().bg(Color::Black))
-                } else {
-                    text.style(Style::default().bg(Color::DarkGray))
-                }
-            })
-            .collect()
-    }
-}
-
-// The preview widget this will used not only here but also in the the cli command show
-// the the printing will be inlined hence it need 2 mode and nice interaface with db
-// fn preview(items: Vec<&String>) { }
-
-pub fn compose_ui(
-    items: Vec<String>,
-    parser: impl Fn(&str) -> Vec<u8>,
-    base: Base,
-) -> io::Result<()> {
+pub fn compose_ui() -> io::Result<()> {
     // init for terminal
     queue!(stdout(), EnterAlternateScreen)?;
     enable_raw_mode()?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
     let mut prompt_string = PromptText::new();
-    let mut list_state = ListState::default();
-    // items will be populated by the fetch from the database
-    let items = process_items(items, base);
 
     // the main loop
     let mut should_quit = false;
     while !should_quit {
         should_quit = handle_events(&mut prompt_string)?;
-        terminal.draw(|frame| layout_and_render(frame, &prompt_string, &mut list_state, &items))?;
-        parser(&prompt_string.return_input())
-            .into_iter()
-            .for_each(|x| list_state.select(Some(x as usize)));
+        terminal.draw(|frame| layout_and_render(frame, &prompt_string))?;
     }
 
     // deinit for terminal
@@ -137,13 +107,13 @@ pub fn compose_ui(
     Ok(())
 }
 
+#[test]
+fn t1() {
+    compose_ui();
+}
+
 // the main frame
-fn layout_and_render<'a>(
-    frame: &mut Frame,
-    prompt: &PromptText,
-    list_state: &mut ListState,
-    items: &impl Fn(Rect) -> Vec<Text<'a>>,
-) {
+fn layout_and_render<'a>(frame: &mut Frame, prompt: &PromptText) {
     let block_config = |title| {
         Block::default()
             .title_position(ratatui::widgets::block::Position::Top)
@@ -162,14 +132,24 @@ fn layout_and_render<'a>(
         .split(main_layout[1]);
 
     let prompt = Paragraph::new(prompt.dump()).block(block_config("Prompt"));
+    //TODO: make a new widget for these
     let preview = Paragraph::new("").block(block_config("Preview"));
-
-    let buffers = List::new(items(preview_and_buffers[1]))
+    let buffers = List::new([Text::from("Hello world"), Text::from("goodbye world")])
         .block(block_config("Buffers"))
         .highlight_style(Style::default().add_modifier(Modifier::BOLD | Modifier::ITALIC))
         .direction(ListDirection::TopToBottom);
+    let scroll = Scrollbar::new(ScrollbarOrientation::VerticalRight);
+    let mut scrollstate = ScrollbarState::new(buffers.len()).position(0);
 
     frame.render_widget(prompt, main_layout[0]);
     frame.render_widget(preview, preview_and_buffers[0]);
-    frame.render_stateful_widget(buffers, preview_and_buffers[1], list_state);
+    frame.render_widget(buffers, preview_and_buffers[1]);
+    frame.render_stateful_widget(
+        scroll,
+        preview_and_buffers[1].inner(&Margin {
+            horizontal: 0,
+            vertical: 0,
+        }),
+        &mut scrollstate,
+    );
 }

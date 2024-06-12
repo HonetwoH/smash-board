@@ -3,11 +3,10 @@ name = "lib"
 version = "0.1.0"
 edition = "2021"
 
-[feature]
-read-config = ["dep:lib/read-config"]
+[features]
+read-config = ["dep:serde", "dep:toml"]
 
 [dependencies]
-
 clap = {workspace = true, feature = ["derive"]}
 rusqlite = {workspace = true}
 serde = {workspace = true, feature = ["derive"], optional = true}
