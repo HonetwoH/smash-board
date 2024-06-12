@@ -5,13 +5,23 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[workspace]
+resolver = "2"
+members = ["tui", "hook", "lib"]
+
 [features]
-tui = ["dep:ratatui", "dep:crossterm"]
+tui = ["dep:tui"]
+hook = ["dep:hook"]
 
 [dependencies]
-clap = { version = "4.5.4", features = ["derive"] }
-crossterm =  {version = "0.27.0", optional = true}
-ratatui =  {version = "0.26.2", optional = true}
+tui = { path = "tui", optional = true }
+hook = { path = "hook", optional = true }
+lib = { path = "lib"}
+
+[workspace.dependencies]
+clap = { version = "4.5.4", features = ["derive"]}
+crossterm = "0.27.0" 
+ratatui = "0.26.2" 
 rusqlite = "0.30.0"
 serde = { version = "1.0.201", features = ["derive"] }
 toml = "0.8.12"

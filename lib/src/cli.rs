@@ -26,7 +26,7 @@ enum Command {
     Compose,
 }
 
-pub(super) enum Action {
+pub enum Action {
     Paste(Option<String>),
     Copy(String),
     Show,
@@ -34,7 +34,7 @@ pub(super) enum Action {
     Compose,
 }
 
-pub(super) fn args() -> Action {
+pub fn args() -> Action {
     let args = match Arg::try_parse() {
         Ok(a) => a,
         Err(e) => {

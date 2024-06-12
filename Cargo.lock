@@ -241,6 +241,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
+name = "hook"
+version = "0.1.0"
+
+[[package]]
 name = "indexmap"
 version = "2.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -270,6 +274,16 @@ name = "itoa"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
+
+[[package]]
+name = "lib"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "rusqlite",
+ "serde",
+ "toml",
+]
 
 [[package]]
 name = "libc"
@@ -519,12 +533,9 @@ checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 name = "smash-board"
 version = "0.1.0"
 dependencies = [
- "clap",
- "crossterm",
- "ratatui",
- "rusqlite",
- "serde",
- "toml",
+ "hook",
+ "lib",
+ "tui",
 ]
 
 [[package]]
@@ -614,6 +625,14 @@ dependencies = [
  "serde_spanned",
  "toml_datetime",
  "winnow",
+]
+
+[[package]]
+name = "tui"
+version = "0.1.0"
+dependencies = [
+ "crossterm",
+ "ratatui",
 ]
 
 [[package]]
