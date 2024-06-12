@@ -12,6 +12,7 @@ members = ["tui", "hook", "lib"]
 [features]
 tui = ["dep:tui"]
 hook = ["dep:hook"]
+config = ["lib/read-config"]
 
 [dependencies]
 tui = { path = "tui", optional = true }
