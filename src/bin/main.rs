@@ -1,15 +1,17 @@
-use lib::cli::{args, Action};
+use smash_board::cli::{args, Action};
+use smash_board::config::Config;
+use smash_board::db::Db;
+use smash_board::grammar::check;
+
+use tui::inline::show_preview;
+
+#[cfg(feature = "tui")]
+use tui::interactive::compose_ui;
+
 #[cfg(feature = "read-config")]
-use lib::config::read_config;
-use lib::config::Config;
-use lib::db::Db;
-use lib::grammar::check;
+use smash_board::config::read_config;
 
 fn main() {
-    // #[cfg(feature = "tui")]
-    // use crate::composer::compose_ui;
-    // use crate::config::read_config;
-    // use crate::grammer::check;
     let config = Config::default();
 
     #[cfg(feature = "read-config")]
@@ -20,9 +22,7 @@ fn main() {
     let pastes_db: Db = Db::new_connection(base).unwrap();
     match args() {
         Action::Show => {
-            pastes_db.show().into_iter().for_each(|x| {
-                println!("{}", x);
-            });
+            show_preview(pastes_db.show().into_iter().enumerate().collect());
         }
         #[cfg(feature = "tui")]
         Action::Compose => {

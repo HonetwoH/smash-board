@@ -7,22 +7,22 @@ edition = "2021"
 
 [workspace]
 resolver = "2"
-members = ["tui", "hook", "lib"]
+members = ["tui", "hook"]
 
 [features]
-tui = ["dep:tui"]
+default = ["dep:tui", "tui?/inline"]
+tui = ["dep:tui", "tui?/interactive"]
 hook = ["dep:hook"]
-config = ["lib/read-config"]
+read-config = []
 
 [dependencies]
-tui = { path = "tui", optional = true }
+tui = { path = "tui", optional = true, features = ["interactive", "inline"] }
 hook = { path = "hook", optional = true }
-lib = { path = "lib"}
+rusqlite = "0.30.0"
+clap = { version = "4.5.4", features = ["derive"]}
 
 [workspace.dependencies]
-clap = { version = "4.5.4", features = ["derive"]}
 crossterm = "0.27.0" 
 ratatui = "0.26.2" 
-rusqlite = "0.30.0"
 serde = { version = "1.0.201", features = ["derive"] }
 toml = "0.8.12"

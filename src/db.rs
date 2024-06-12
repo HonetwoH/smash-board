@@ -1,6 +1,8 @@
-use crate::config::Base;
-use rusqlite::{params, Connection, Result};
 use std::path::Path;
+
+use crate::config::Base;
+
+use rusqlite::{params, Connection, Result};
 
 // The database will be supporting a stack where their is no notion of
 // pop only PUSH can happen and fetching at any postsion is possible if that

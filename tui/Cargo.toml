@@ -6,3 +6,8 @@ edition = "2021"
 [dependencies]
 crossterm = {workspace = true}
 ratatui = {workspace = true}
+
+[features]
+default = ["inline"]
+inline = []
+interactive = []  
