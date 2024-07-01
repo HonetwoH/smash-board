@@ -10,7 +10,7 @@ mod widgets {
     // And block itself contains buffer number and how many times the buffer is called
 
     use ratatui::{
-        layout::{Position, Rect},
+        layout::Rect,
         text::Line,
         widgets::{Block, Paragraph},
     };
@@ -97,17 +97,6 @@ mod widgets {
             // complete demand of least lines first and most lines last
             let request_lines = |required: usize| {};
             todo!("Make sub blocks with most optimal size and each block should be of different if needed")
-        }
-
-        // shuffle_blobs take input append which is index of blob
-        // it will increse the self.selected and bring `append` to end of
-        // selected slice of order vector
-        fn shuffle_blobs(&mut self, append: usize) {
-            todo!("Change order of shuffled blobs and handle the value of selected")
-        }
-
-        fn revert_shuffling(&mut self) {
-            todo!()
         }
 
         fn size_changed(&mut self) {
