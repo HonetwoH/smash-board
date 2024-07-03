@@ -23,6 +23,12 @@ fn main() {
     match args() {
         Action::Show => {
             show_preview(pastes_db.show().into_iter().enumerate().collect());
+            let blobs = pastes_db.show();
+            if blobs.is_empty() {
+                println!("There is nothing here")
+            } else {
+                show_preview(blobs.into_iter().enumerate().collect());
+            }
         }
         #[cfg(feature = "tui")]
         Action::Compose => {

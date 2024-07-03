@@ -1,5 +1,4 @@
 use ratatui::{prelude::*, widgets::*};
-use std::io;
 
 // meant to be called with show command
 pub fn show_preview<'a>(buffers: Vec<(usize, String)>) -> Table<'a> {
@@ -29,6 +28,7 @@ pub fn show_preview<'a>(buffers: Vec<(usize, String)>) -> Table<'a> {
 
 #[test]
 fn t2() {
+    use std::io;
     let rows: Vec<_> = vec![
         "Hello".to_string(),
         r"asfdddddddddddddddddddddddsfasfdsafasfa\n\vsfasfasfasdfsafsa".to_string(),
