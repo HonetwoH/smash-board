@@ -1,3 +1,4 @@
+use crate::widgets::PromptText;
 use crossterm::{
     event::{self, Event, KeyCode},
     queue,
@@ -5,105 +6,6 @@ use crossterm::{
 };
 use ratatui::{prelude::*, widgets::*};
 use std::io::{self, stdout};
-
-struct PromptText {
-    field: String,
-}
-
-impl PromptText {
-    fn new() -> Self {
-        Self {
-            field: String::from("█"),
-        }
-    }
-    fn push(&mut self, x: char) {
-        // TODO: need a constraint on the length at some point
-        let cursor = self.field.pop().unwrap();
-        self.field.push(x);
-        self.field.push(cursor);
-    }
-    fn pop(&mut self) {
-        // 3 because the cursor character is 3 byte unicode
-        if self.field.len() > 3 {
-            let cursor = self.field.pop().unwrap();
-            let _ = self.field.pop().unwrap();
-            self.field.push(cursor);
-        }
-    }
-    fn dump(&self) -> &str {
-        &self.field
-    }
-    fn return_input(&self) -> &str {
-        &self.field[0..&self.field.len() - 3]
-    }
-}
-
-#[derive(Debug)]
-struct ShuffleList {
-    list_selected: Vec<u8>,
-    list_unselected: Vec<u8>,
-    size: u8,
-    selected: u8,
-}
-
-impl ShuffleList {
-    fn new(v: u8) -> Self {
-        Self {
-            list_selected: Vec::with_capacity(v as usize),
-            list_unselected: Vec::from_iter(0..v),
-            size: v as u8,
-            selected: 0,
-        }
-    }
-
-    fn status(self) -> Vec<u8> {
-        let mut first = self.list_selected.clone();
-        let mut second = self.list_unselected.clone();
-        first.append(&mut second);
-        first
-    }
-
-    fn shuffle(&mut self, n: u8) {
-        assert!(self.selected <= self.size);
-        let idx = Self::search(&self.list_unselected, n).unwrap();
-        let ele = self.list_unselected.remove(idx as usize);
-        assert!(ele == n);
-        self.selected += 1;
-        self.list_selected.push(n);
-        assert!(self.list_selected.len() + self.list_unselected.len() == self.size as usize);
-    }
-
-    fn unshuffle(&mut self, n: u8) {
-        let idx = Self::search(&self.list_selected, n).unwrap();
-        let ele = self.list_selected.remove(idx as usize);
-        assert!(ele == n);
-        self.selected -= 1;
-        // find the appropriate location to insert n so that it turn out sorted
-        let iidx = {
-            let mut idx = 0;
-            for i in self.list_unselected.iter() {
-                if n > *i {
-                    idx += 1;
-                }
-            }
-            idx as usize
-        };
-        self.list_unselected.insert(iidx, n);
-        assert!(self.list_selected.len() + self.list_unselected.len() == self.size as usize);
-    }
-
-    // there must be no duplicates
-    fn search(hay: &[u8], pin: u8) -> Option<u8> {
-        let mut c = 0;
-        for i in hay {
-            if *i == pin {
-                return Some(c);
-            }
-            c += 1
-        }
-        None
-    }
-}
 
 fn handle_events(text: &mut PromptText) -> io::Result<bool> {
     if event::poll(std::time::Duration::from_millis(50))? {

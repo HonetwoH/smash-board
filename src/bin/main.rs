@@ -22,7 +22,6 @@ fn main() {
     let pastes_db: Db = Db::new_connection(base).unwrap();
     match args() {
         Action::Show => {
-            show_preview(pastes_db.show().into_iter().enumerate().collect());
             let blobs = pastes_db.show();
             if blobs.is_empty() {
                 println!("There is nothing here")
