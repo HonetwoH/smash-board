@@ -1,5 +1,5 @@
 [package]
-name = "smash-board"
+name = "smash_board"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,17 +7,16 @@ edition = "2021"
 
 [workspace]
 resolver = "2"
-members = ["tui", "hook"]
+members = ["tui"]
 
 [features]
 default = ["dep:tui", "tui?/inline"]
 tui = ["dep:tui", "tui?/interactive"]
-hook = ["dep:hook"]
 read-config = []
 
 [dependencies]
 tui = { path = "tui", optional = true, features = ["interactive", "inline"] }
-hook = { path = "hook", optional = true }
+wl-clipboard-rs = "0.8.1"
 rusqlite = "0.30.0"
 clap = { version = "4.5.4", features = ["derive"]}
 

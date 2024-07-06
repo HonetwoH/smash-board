@@ -4,6 +4,7 @@ pub mod interactive;
 #[cfg(feature = "inline")]
 pub mod inline;
 
+#[cfg(feature = "interactive")]
 mod widgets {
     // Interactive Select will blocks with some width and if the blob is
     // selected then its border becomes some other color other than white
@@ -128,7 +129,7 @@ mod widgets {
         // its copy will be rearranged as needed
         blocks: Vec<Paragraph<'a>>,
         // order of text this will work with selected to determine how many to color
-        order_of_blocks: Vec<u8>,
+        order_of_blocks: ShuffleList,
         // total number of selected blobs
         selected: u8,
         // number of blocks
@@ -177,19 +178,19 @@ mod widgets {
 
         // this function will modify the blocks as neeeded
         // TODO: create a test suite for testing different config  of this functions
-        fn make_blocks(&mut self) {
-            // text are of height 2 hence divide by 2
-            let available_lines = self.size.1.height / 2;
-            let avaialbe_width = self.size.1.width;
-            let border_size = 2;
-            let total: usize = self
-                .raw_buffer
-                .iter()
-                .fold(0, |total, (_, lines)| total + lines);
-            // complete demand of least lines first and most lines last
-            let request_lines = |required: usize| {};
-            todo!("Make sub blocks with most optimal size and each block should be of different if needed")
-        }
+        // fn make_blocks(&mut self) {
+        //     // text are of height 2 hence divide by 2
+        //     let available_lines = self.size.1.height / 2;
+        //     let avaialbe_width = self.size.1.width;
+        //     let border_size = 2;
+        //     let total: usize = self
+        //         .raw_buffer
+        //         .iter()
+        //         .fold(0, |total, (_, lines)| total + lines);
+        //     // complete demand of least lines first and most lines last
+        //     let request_lines = |required: usize| {};
+        //     todo!("Make sub blocks with most optimal size and each block should be of different if needed")
+        // }
 
         fn size_changed(&mut self) {
             todo!("Run this before every iteration automatically and make blocks again")
