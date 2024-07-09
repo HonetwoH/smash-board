@@ -1,8 +1,7 @@
+pub mod inline;
+
 #[cfg(feature = "interactive")]
 pub mod interactive;
-
-#[cfg(feature = "inline")]
-pub mod inline;
 
 #[cfg(feature = "interactive")]
 mod widgets {

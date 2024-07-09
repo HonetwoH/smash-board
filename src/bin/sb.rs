@@ -2,7 +2,6 @@ use smash_board::cli::{args, Action};
 use smash_board::config::Config;
 use smash_board::db::Db;
 use smash_board::grammar::check;
-
 use tui::inline::show_preview;
 
 #[cfg(feature = "tui")]

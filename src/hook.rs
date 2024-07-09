@@ -8,7 +8,7 @@ use std::{
 use wl_clipboard_rs::paste::{get_contents, ClipboardType, Error, MimeType, Seat};
 
 // Use logging and respawn the process and if it failed too much then notify user
-fn poll_clipboard() -> io::Result<()> {
+pub fn poll_clipboard() -> io::Result<()> {
     fn get_from_clipboard(previous: &mut Vec<u8>) -> io::Result<Vec<u8>> {
         let mut contents = vec![];
         loop {
@@ -33,7 +33,7 @@ fn poll_clipboard() -> io::Result<()> {
     }
 
     let mut previous = vec![];
-    let db = Db::new_connection(Base::HexaDecimal).expect("Failed the create connection with db");
+    let db = Db::new_connection(Base::Octal).expect("Failed the create connection with db");
     loop {
         let content = get_from_clipboard(&mut previous)?;
         db.push(String::from_utf8(content).expect("Failed to convert to string"))

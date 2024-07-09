@@ -8,6 +8,4 @@ crossterm = {workspace = true}
 ratatui = {workspace = true}
 
 [features]
-default = ["inline"]
-inline = []
 interactive = []  

@@ -1,14 +1,16 @@
 // this modules will read and interpret config which is
 // as of now just the number of available buffers
+use std::default;
+
 #[cfg(feature = "read-config")]
 use serde::Deserialize;
-#[cfg(feature = "read-config")]
 use std::{env, fs};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 #[cfg_attr(feature = "read-config", derive(Deserialize))]
 pub enum Base {
     Hexa = 6,
+    #[default]
     Octal = 8,
     Decimal = 10,
     HexaDecimal = 16,
