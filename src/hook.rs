@@ -5,33 +5,34 @@ use std::{
     thread,
     time::Duration,
 };
+#[cfg(feature = "wayland")]
 use wl_clipboard_rs::paste::{get_contents, ClipboardType, Error, MimeType, Seat};
+#[cfg(feature = "wayland")]
+fn get_from_clipboard(previous: &mut Vec<u8>) -> io::Result<Vec<u8>> {
+    let mut contents = vec![];
+    loop {
+        let result = get_contents(ClipboardType::Regular, Seat::Unspecified, MimeType::Text);
+        match result {
+            Ok((mut pipe, _)) => {
+                contents.clear();
+                pipe.read_to_end(&mut contents)?;
+                if !are_equal(&contents, &previous) {
+                    *previous = contents.clone();
+                    return Ok(contents);
+                }
+            }
+            Err(Error::NoSeats) | Err(Error::ClipboardEmpty) | Err(Error::NoMimeType) => {
+                // The clipboard is empty or doesn't contain text, nothing to worry about.
+                todo!("This needs some working")
+            }
+            Err(_) => panic!(),
+        };
+        thread::sleep(Duration::from_secs(1));
+    }
+}
 
 // Use logging and respawn the process and if it failed too much then notify user
 pub fn poll_clipboard() -> io::Result<()> {
-    fn get_from_clipboard(previous: &mut Vec<u8>) -> io::Result<Vec<u8>> {
-        let mut contents = vec![];
-        loop {
-            let result = get_contents(ClipboardType::Regular, Seat::Unspecified, MimeType::Text);
-            match result {
-                Ok((mut pipe, _)) => {
-                    contents.clear();
-                    pipe.read_to_end(&mut contents)?;
-                    if !are_equal(&contents, &previous) {
-                        *previous = contents.clone();
-                        return Ok(contents);
-                    }
-                }
-                Err(Error::NoSeats) | Err(Error::ClipboardEmpty) | Err(Error::NoMimeType) => {
-                    // The clipboard is empty or doesn't contain text, nothing to worry about.
-                    todo!("This needs some working")
-                }
-                Err(_) => panic!(),
-            };
-            thread::sleep(Duration::from_secs(1));
-        }
-    }
-
     let mut previous = vec![];
     let db = Db::new_connection(Base::Octal).expect("Failed the create connection with db");
     loop {

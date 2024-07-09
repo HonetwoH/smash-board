@@ -1,7 +1,5 @@
 // this modules will read and interpret config which is
 // as of now just the number of available buffers
-use std::default;
-
 #[cfg(feature = "read-config")]
 use serde::Deserialize;
 use std::{env, fs};

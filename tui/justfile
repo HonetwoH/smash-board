@@ -1,0 +1,5 @@
+set export 
+RUST_BACKTRACE := "1"
+
+test-tui:
+    cargo t -F interactive t1

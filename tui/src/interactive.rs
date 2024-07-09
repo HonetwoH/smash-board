@@ -1,4 +1,4 @@
-use crate::widgets::PromptText;
+use crate::widgets::{Preview, PromptText};
 use crossterm::{
     event::{self, Event, KeyCode},
     queue,
@@ -54,7 +54,7 @@ pub fn compose_ui() -> io::Result<()> {
 
 #[test]
 fn t1() {
-    compose_ui();
+    let _ = compose_ui();
 }
 
 // the main frame
@@ -71,30 +71,45 @@ fn layout_and_render<'a>(frame: &mut Frame, prompt: &PromptText) {
         .direction(Direction::Vertical)
         .constraints(vec![Constraint::Length(3), Constraint::Fill(1)])
         .split(frame.size());
-    let preview_and_buffers = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(Constraint::from_percentages([45, 55]))
-        .split(main_layout[1]);
 
     let prompt = Paragraph::new(prompt.dump()).block(block_config("Prompt"));
-    //TODO: make a new widget for these
-    let preview = Paragraph::new("").block(block_config("Preview"));
-    let buffers = List::new([Text::from("Hello world"), Text::from("goodbye world")])
-        .block(block_config("Buffers"))
-        .highlight_style(Style::default().add_modifier(Modifier::BOLD | Modifier::ITALIC))
-        .direction(ListDirection::TopToBottom);
-    let scroll = Scrollbar::new(ScrollbarOrientation::VerticalRight);
-    let mut scrollstate = ScrollbarState::new(buffers.len()).position(0);
+
+    let mut buffers = Preview::new(
+        vec![
+            "Hello world".to_string(),
+            "goodbye world".to_string(),
+            "Hello world".to_string(),
+            "goodbye world".to_string(),
+            "Hello world".to_string(),
+            "goodbye world".to_string(),
+            "Hello world".to_string(),
+            "goodbye world".to_string(),
+            "Hello world".to_string(),
+            "goodbye world".to_string(),
+            "Hello world".to_string(),
+            "goodbye world".to_string(),
+            "Hello world".to_string(),
+            "goodbye world".to_string(),
+            "goodbye world".to_string(),
+            "Hello world".to_string(),
+            "goodbye world".to_string(),
+        ],
+        frame.size(),
+    );
+
+    buffers.make_blocks();
+    buffers.change_style_on_select(5);
+    // let scroll = Scrollbar::new(ScrollbarOrientation::VerticalRight);
+    // let mut scrollstate = ScrollbarState::new(buffers.len()).position(0);
 
     frame.render_widget(prompt, main_layout[0]);
-    frame.render_widget(preview, preview_and_buffers[0]);
-    frame.render_widget(buffers, preview_and_buffers[1]);
-    frame.render_stateful_widget(
-        scroll,
-        preview_and_buffers[1].inner(&Margin {
-            horizontal: 0,
-            vertical: 0,
-        }),
-        &mut scrollstate,
-    );
+    frame.render_widget(buffers, main_layout[1]);
+    // frame.render_stateful_widget(
+    //     scroll,
+    //     main_layout[1].inner(&Margin {
+    //         horizontal: 0,
+    //         vertical: 0,
+    //     }),
+    //     &mut scrollstate,
+    // );
 }

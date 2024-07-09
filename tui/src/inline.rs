@@ -1,20 +1,51 @@
 use ratatui::{prelude::*, widgets::*};
+use std::io;
 
 // meant to be called with show command
-pub fn show_preview<'a>(buffers: Vec<(usize, String)>) -> Table<'a> {
+pub fn show_preview(buffers: Vec<(usize, String)>) {
+    let (lines, table) = make_table(buffers);
+    let mut l = 2;
+    l += lines;
+    let mut terminal = Terminal::with_options(
+        CrosstermBackend::new(io::stdout()),
+        TerminalOptions {
+            viewport: Viewport::Inline(l as u16),
+        },
+    )
+    .unwrap();
+
+    terminal
+        .draw(|frame| frame.render_widget(&table, frame.size()))
+        .unwrap();
+}
+
+fn count_lines(blob: &str) -> u16 {
+    let mut count = 1;
+    for i in blob.chars() {
+        count += if i == '\n' { 1 } else { 0 };
+    }
+    count as u16
+}
+
+fn make_table<'a>(buffers: Vec<(usize, String)>) -> (u16, Table<'a>) {
     let mut color = true;
+    let mut total_lines = 0;
     let rows = buffers
         .into_iter()
         .map(|(i, st)| {
             color = !color;
-            (i.to_string(), st, color)
+            let h = count_lines(&st);
+            total_lines += h;
+            (i.to_string(), st, h, color)
         })
-        .map(|(i, st, color)| {
-            Row::new([i, st]).style(Style::default().bg(if color {
-                Color::DarkGray
-            } else {
-                Color::default()
-            }))
+        .map(|(i, st, h, color)| {
+            Row::new([i, st])
+                .height(h)
+                .style(Style::default().bg(if color {
+                    Color::DarkGray
+                } else {
+                    Color::default()
+                }))
         });
     let header = Row::new(vec!["Id", "Buffers"])
         .style(Style::default().fg(Color::Green).bold().underlined());
@@ -23,12 +54,11 @@ pub fn show_preview<'a>(buffers: Vec<(usize, String)>) -> Table<'a> {
         .widths(constraints)
         .header(header.clone())
         .footer(header);
-    table
+    (total_lines, table)
 }
 
 #[test]
 fn t2() {
-    use std::io;
     let rows: Vec<_> = vec![
         "Hello".to_string(),
         r"asfdddddddddddddddddddddddsfasfdsafasfa\n\vsfasfasfasdfsafsa".to_string(),
@@ -38,13 +68,14 @@ fn t2() {
     .enumerate()
     .collect();
 
-    let l = (rows.len() + 2) as u16;
-    let table = show_preview(rows);
+    let mut l = rows.len() as u16 + 2;
+    let (lines, table) = make_table(rows);
+    l += lines;
 
     let mut terminal = Terminal::with_options(
         CrosstermBackend::new(io::stdout()),
         TerminalOptions {
-            viewport: Viewport::Inline(l),
+            viewport: Viewport::Inline(l as u16),
         },
     )
     .unwrap();
