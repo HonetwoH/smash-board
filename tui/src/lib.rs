@@ -24,14 +24,18 @@ mod widgets {
 
     //TODO: add number parsing abilities in this
     pub struct PromptText {
+        base: Base,
         field: String,
+        bufferlist: Vec<u8>,
     }
 
     impl PromptText {
         // This is very ugly hack please avoid it
-        pub fn new() -> Self {
+        pub fn new(base: Base) -> Self {
             Self {
+                base,
                 field: String::from("█"),
+                bufferlist: Vec::with_capacity(base as u8),
             }
         }
         pub fn push(&mut self, x: char) {
@@ -39,6 +43,7 @@ mod widgets {
             let cursor = self.field.pop().unwrap();
             self.field.push(x);
             self.field.push(cursor);
+            self.bufferlist.push({ x.to_digit(base as u32).unwrap() });
         }
         pub fn pop(&mut self) {
             // 3 because the cursor character is 3 byte unicode
@@ -46,6 +51,7 @@ mod widgets {
                 let cursor = self.field.pop().unwrap();
                 let _ = self.field.pop().unwrap();
                 self.field.push(cursor);
+                self.bufferlist.pop();
             }
         }
         // Return the prompt text for the rendering
@@ -191,10 +197,14 @@ mod widgets {
                 blocks.push(
                     Paragraph::new(Text::raw({
                         let lines: Vec<String> = self.raw_buffer[i].clone();
-                        let three_lines: String = lines.into_iter().take(3).collect();
+                        let three_lines: String = lines.into_iter().take(5).collect();
                         three_lines
                     }))
-                    .block(Block::new().borders(Borders::all()).title(format!("{}", i))),
+                    .block(
+                        Block::new()
+                            .borders(Borders::all())
+                            .title(format!(">> {} <<", i)),
+                    ),
                 );
             }
             self.blocks = blocks;
@@ -245,7 +255,7 @@ mod widgets {
             let layout: Rc<[Rect]> = {
                 Layout::default()
                     .direction(Direction::Vertical)
-                    .constraints(vec![Constraint::Min(5); self.no_of_blocks as usize])
+                    .constraints(vec![Constraint::Max(5); self.no_of_blocks as usize])
                     .split(inner_area)
             };
 

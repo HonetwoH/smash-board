@@ -41,6 +41,7 @@ pub fn compose_ui(blobs: Vec<String>) -> io::Result<()> {
     // setup widget
     let mut prompt_string = PromptText::new();
     let mut buffers = Preview::new(blobs);
+    buffers.make_blocks();
 
     // the main loop
     let mut should_quit = false;

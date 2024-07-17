@@ -7,6 +7,7 @@ use std::{
 };
 #[cfg(feature = "wayland")]
 use wl_clipboard_rs::paste::{get_contents, ClipboardType, Error, MimeType, Seat};
+
 #[cfg(feature = "wayland")]
 fn get_from_clipboard(previous: &mut Vec<u8>) -> io::Result<Vec<u8>> {
     let mut contents = vec![];
@@ -36,12 +37,16 @@ pub fn poll_clipboard() -> io::Result<()> {
     let mut previous = vec![];
     let db = Db::new_connection(Base::Octal).expect("Failed the create connection with db");
     loop {
-        let content = get_from_clipboard(&mut previous)?;
-        db.push(String::from_utf8(content).expect("Failed to convert to string"))
-            .expect("Failed to push the paste to the db");
+        #[cfg(feature = "wayland")]
+        {
+            let content = get_from_clipboard(&mut previous)?;
+            db.push(String::from_utf8(content).expect("Failed to convert to string"))
+                .expect("Failed to push the paste to the db");
+        }
     }
 }
 
+//TODO: try simd for this
 fn are_equal(a: &Vec<u8>, b: &Vec<u8>) -> bool {
     if a.len() != b.len() {
         false

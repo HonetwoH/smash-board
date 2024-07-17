@@ -7,25 +7,25 @@ description = "A yet CLI clipboard manager"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace]
-resolver = "2"
-members = ["tui"]
+members = ["tui", "core"]
+default-members = ["core"]
 
 [features]
 default = ["wayland"]
 tui = ["tui/interactive"]
-read-config = []
-wayland = ["dep:wl-clipboard-rs"]
-x11 = []
+read-config = ["core"]
+wayland = ["core"]
+x11 = ["core"]
 
 [dependencies]
 tui = { path = "tui", features = ["interactive"] }
-wl-clipboard-rs = {version = "0.8.1", optional = true }
-rusqlite = "0.30.0"
-clap = { version = "4.5.4", features = ["derive"]}
-# log = "0.4.21"
+core = {path = "core", features = ["wayland", "x11", "read-config"], optional = true}
 
 [workspace.dependencies]
-crossterm = "0.27.0" 
-ratatui = "0.26.2" 
-serde = { version = "1.0.201", features = ["derive"] }
-toml = "0.8.12"
+crossterm = "0.27" 
+ratatui = "0.26" 
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+rusqlite = "0.30"
+clap = { version = "4.5.4", features = ["derive"]}
+wl-clipboard-rs = "0.8"

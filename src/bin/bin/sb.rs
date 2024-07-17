@@ -1,7 +1,7 @@
-use core::cli::{args, Action};
-use core::config::Config;
-use core::db::Db;
-use core::grammar::check;
+use smash_board::cli::{args, Action};
+use smash_board::config::Config;
+use smash_board::db::Db;
+use smash_board::grammar::check;
 use tui::inline::show_preview;
 
 #[cfg(feature = "tui")]

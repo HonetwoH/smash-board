@@ -1,3 +1,4 @@
+set fallback
 set export 
 RUST_BACKTRACE := "1"
 

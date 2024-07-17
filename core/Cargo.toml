@@ -1,0 +1,17 @@
+[package]
+name = "core"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["wayland"]
+wayland = ["dep:wl-clipboard-rs"]
+x11 = []
+read-config =["dep:toml", "dep:serde"]
+
+[dependencies]
+clap = {workspace = true}
+rusqlite = {workspace = true}
+serde = {workspace = true, optional = true }
+toml = {workspace = true, optional = true }
+wl-clipboard-rs = {workspace = true, optional =true}
