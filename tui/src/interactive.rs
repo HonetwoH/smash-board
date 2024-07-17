@@ -32,18 +32,24 @@ fn handle_events(text: &mut PromptText) -> io::Result<bool> {
 }
 
 // The main function for in this module
-pub fn compose_ui() -> io::Result<()> {
+pub fn compose_ui(blobs: Vec<String>) -> io::Result<()> {
     // init for terminal
     queue!(stdout(), EnterAlternateScreen)?;
     enable_raw_mode()?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
+
+    // setup widget
     let mut prompt_string = PromptText::new();
+    let mut buffers = Preview::new(blobs);
 
     // the main loop
     let mut should_quit = false;
     while !should_quit {
+        // event
         should_quit = handle_events(&mut prompt_string)?;
-        terminal.draw(|frame| layout_and_render(frame, &prompt_string))?;
+
+        // render
+        terminal.draw(|frame| layout_and_render(frame, &prompt_string, &buffers))?;
     }
 
     // deinit for terminal
@@ -54,11 +60,21 @@ pub fn compose_ui() -> io::Result<()> {
 
 #[test]
 fn t1() {
-    let _ = compose_ui();
+    let _ = compose_ui(vec![
+        "Hello world".to_string(),
+        "Goodbye world".to_string(),
+        "Hello world".to_string(),
+        "Goodbye world".to_string(),
+        "Hello world".to_string(),
+        "Goodbye world".to_string(),
+        "Hello world".to_string(),
+        "Hello world".to_string(),
+        "Goodbye world".to_string(),
+    ]);
 }
 
 // the main frame
-fn layout_and_render<'a>(frame: &mut Frame, prompt: &PromptText) {
+fn layout_and_render<'a>(frame: &mut Frame, prompt: &PromptText, buffers: &Preview<'a>) {
     let block_config = |title| {
         Block::default()
             .title_position(ratatui::widgets::block::Position::Top)
@@ -74,31 +90,6 @@ fn layout_and_render<'a>(frame: &mut Frame, prompt: &PromptText) {
 
     let prompt = Paragraph::new(prompt.dump()).block(block_config("Prompt"));
 
-    let mut buffers = Preview::new(
-        vec![
-            "Hello world".to_string(),
-            "goodbye world".to_string(),
-            "Hello world".to_string(),
-            "goodbye world".to_string(),
-            "Hello world".to_string(),
-            "goodbye world".to_string(),
-            "Hello world".to_string(),
-            "goodbye world".to_string(),
-            "Hello world".to_string(),
-            "goodbye world".to_string(),
-            "Hello world".to_string(),
-            "goodbye world".to_string(),
-            "Hello world".to_string(),
-            "goodbye world".to_string(),
-            "goodbye world".to_string(),
-            "Hello world".to_string(),
-            "goodbye world".to_string(),
-        ],
-        frame.size(),
-    );
-
-    buffers.make_blocks();
-    buffers.change_style_on_select(5);
     // let scroll = Scrollbar::new(ScrollbarOrientation::VerticalRight);
     // let mut scrollstate = ScrollbarState::new(buffers.len()).position(0);
 

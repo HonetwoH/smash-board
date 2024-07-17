@@ -13,16 +13,16 @@ mod widgets {
     use std::rc::Rc;
 
     use ratatui::{
-        layout::{self, Constraint, Direction, Layout, Margin, Rect},
+        layout::{Constraint, Direction, Layout, Rect},
         prelude::Style,
         style::Stylize,
-        symbols::block,
         text::Text,
         widgets::{
             Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Widget,
         },
     };
 
+    //TODO: add number parsing abilities in this
     pub struct PromptText {
         field: String,
     }
@@ -67,23 +67,23 @@ mod widgets {
     }
 
     impl ShuffleList {
-        pub fn new(v: u8) -> Self {
+        pub fn new(base: u8) -> Self {
             Self {
-                list_selected: Vec::with_capacity(v as usize),
-                list_unselected: Vec::from_iter(0..v),
-                size: v as u8,
+                list_selected: Vec::with_capacity(base as usize),
+                list_unselected: Vec::from_iter(0..base),
+                size: base as u8,
                 selected: 0,
             }
         }
 
-        fn status(self) -> Vec<u8> {
+        fn status(&self) -> Vec<u8> {
             let mut first = self.list_selected.clone();
             let mut second = self.list_unselected.clone();
             first.append(&mut second);
             first
         }
 
-        fn shuffle(&mut self, n: u8) {
+        fn select(&mut self, n: u8) {
             assert!(self.selected <= self.size);
             let idx = Self::search(&self.list_unselected, n).unwrap();
             let ele = self.list_unselected.remove(idx as usize);
@@ -93,7 +93,7 @@ mod widgets {
             assert!(self.list_selected.len() + self.list_unselected.len() == self.size as usize);
         }
 
-        fn unshuffle(&mut self, n: u8) {
+        fn unselect(&mut self, n: u8) {
             let idx = Self::search(&self.list_selected, n).unwrap();
             let ele = self.list_selected.remove(idx as usize);
             assert!(ele == n);
@@ -145,19 +145,18 @@ mod widgets {
         // its copy will be rearranged as needed
         blocks: Vec<Paragraph<'a>>,
         // change in size
-        size: Rect,
+        size: Option<Rect>,
         // TODO: maybe this is not fine ?
-        scroll_bar: (Scrollbar<'a>, ScrollbarState),
+        // scroll_bar: (Scrollbar<'a>, ScrollbarState),
     }
 
     impl<'a> Preview<'a> {
-        pub fn new(blobs: Vec<String>, frame_size: Rect) -> Self {
+        pub fn new(blobs: Vec<String>) -> Self {
             let no_of_blocks = blobs.len() as u8;
             let order_of_blocks = ShuffleList::new(no_of_blocks);
-            let size = frame_size;
             let scroll = Scrollbar::new(ScrollbarOrientation::VerticalRight);
             // TODO: Should wrap this in a smart pointer
-            let scrollstate = ScrollbarState::new(no_of_blocks as usize).position(0);
+            // let scrollstate = ScrollbarState::new(no_of_blocks as usize).position(0);
 
             let (raw_buffer, no_of_lines): (Vec<Vec<String>>, Vec<usize>) = blobs
                 .into_iter()
@@ -179,22 +178,9 @@ mod widgets {
                 blocks: Vec::new(),
                 order_of_blocks,
                 no_of_blocks,
-                size,
-                scroll_bar: (scroll, scrollstate),
+                size: None,
+                // scroll_bar: (scroll, scrollstate),
             }
-        }
-
-        // This should be triggred automatically
-        pub fn change_style_on_select(&mut self, select: usize) {
-            let block: Paragraph<'_> = self.blocks[select].clone();
-            // TODO: find something better
-            let new_block = block.block(
-                Block::default()
-                    .borders(Borders::all())
-                    .title(format!("{}", select))
-                    .border_style(Style::new().green()),
-            );
-            self.blocks[select] = new_block;
         }
 
         // this function will modify the blocks as neeeded
@@ -214,40 +200,65 @@ mod widgets {
             self.blocks = blocks;
         }
 
-        fn size_changed(&mut self, area: Rect) {
-            if !(self.size == area) {
-                self.make_blocks();
-                self.size = area;
+        // TODO: call this in render loop
+        pub fn size_changed(&mut self, area: Rect) {
+            if let Some(size) = self.size {
+                if !(size == area) {
+                    self.make_blocks();
+                    self.size = Some(area);
+                }
+            } else {
+                self.size = Some(area)
             }
+        }
+
+        pub fn select(&mut self, n: u8) {
+            let block: Paragraph<'_> = self.blocks[n as usize].clone();
+            let new_block = block.block(
+                Block::default()
+                    .borders(Borders::all())
+                    .title(format!("{}", n))
+                    .border_style(Style::new().green()),
+            );
+            self.blocks[n as usize] = new_block;
+            self.order_of_blocks.select(n)
+        }
+
+        pub fn unselect(&mut self, n: u8) {
+            let block: Paragraph<'_> = self.blocks[n as usize].clone();
+            let new_block = block.block(
+                Block::default()
+                    .borders(Borders::all())
+                    .title(format!("{}", n)),
+            );
+            self.blocks[n as usize] = new_block;
+            self.order_of_blocks.unselect(n)
         }
     }
 
     // TODO: is it possible to do this without STATE
-    impl<'a> Widget for Preview<'a> {
+    impl<'a> Widget for &Preview<'a> {
         fn render(self, area: Rect, buf: &mut ratatui::prelude::Buffer) {
             // HOWTO: render scrollable list
             let outer_block = Block::new().borders(Borders::all()).title("Preview");
             let inner_area = outer_block.inner(area);
             let layout: Rc<[Rect]> = {
-                let for_each = 100 / self.no_of_blocks;
-
                 Layout::default()
                     .direction(Direction::Vertical)
-                    .constraints(vec![
-                        Constraint::Percentage(for_each as u16);
-                        self.no_of_blocks as usize
-                    ])
+                    .constraints(vec![Constraint::Min(5); self.no_of_blocks as usize])
                     .split(inner_area)
             };
 
+            let state = self.order_of_blocks.status();
+            // eprintln!("{:?}", &state);
             // TODO: will need to reorder this later
-            for idx in self.order_of_blocks.status() {
-                let block = self.blocks[idx as usize].clone();
-                block.render(layout[idx as usize], buf);
+            let mut idx = 0;
+            for i in state {
+                let block = self.blocks[i as usize].clone();
+                block.render(layout[idx], buf);
+                idx += 1;
             }
-            // for (idx, blk) in self.blocks.clone().into_iter().enumerate() {
-            //     blk.render(layout[idx], buf);
-            // }
+            assert!(idx == self.no_of_blocks as usize);
             outer_block.render(area, buf);
         }
     }

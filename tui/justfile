@@ -2,4 +2,4 @@ set export
 RUST_BACKTRACE := "1"
 
 test-tui:
-    cargo t -F interactive t1
+    cargo t -F interactive t1 -- --nocapture 
