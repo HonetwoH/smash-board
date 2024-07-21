@@ -4,8 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-crossterm = {workspace = true}
-ratatui = {workspace = true}
+crossterm = { workspace = true }
+ratatui = { workspace = true }
+config = { path = "../config" }
 
 [features]
 interactive = []  
+inline = []

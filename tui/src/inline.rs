@@ -1,5 +1,12 @@
-use ratatui::{prelude::*, widgets::*};
 use std::io;
+
+use ratatui::{
+    backend::CrosstermBackend,
+    layout::Constraint,
+    style::{Color, Style},
+    widgets::{Row, Table},
+    Terminal, TerminalOptions, Viewport,
+};
 
 // meant to be called with show command
 pub fn show_preview(buffers: Vec<(usize, String)>) {
@@ -47,8 +54,7 @@ fn make_table<'a>(buffers: Vec<(usize, String)>) -> (u16, Table<'a>) {
                     Color::default()
                 }))
         });
-    let header = Row::new(vec!["Id", "Buffers"])
-        .style(Style::default().fg(Color::Green).bold().underlined());
+    let header = Row::new(vec!["Id", "Buffers"]).style(Style::default().fg(Color::Green));
     let constraints = [Constraint::Ratio(1, 11), Constraint::Ratio(10, 11)];
     let table = Table::new(rows, constraints)
         .widths(constraints)

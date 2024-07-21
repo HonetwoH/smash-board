@@ -1,11 +1,19 @@
 use crate::widgets::{Preview, PromptText};
+use config::Base;
+
+use std::io::{self, stdout};
+
 use crossterm::{
     event::{self, Event, KeyCode},
     queue,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{prelude::*, widgets::*};
-use std::io::{self, stdout};
+use ratatui::{
+    backend::CrosstermBackend,
+    layout::{Constraint, Direction, Layout},
+    widgets::{Block, Borders, Paragraph},
+    Frame, Terminal,
+};
 
 fn handle_events(text: &mut PromptText) -> io::Result<bool> {
     if event::poll(std::time::Duration::from_millis(50))? {
@@ -32,14 +40,14 @@ fn handle_events(text: &mut PromptText) -> io::Result<bool> {
 }
 
 // The main function for in this module
-pub fn compose_ui(blobs: Vec<String>) -> io::Result<()> {
+pub fn compose_ui(base: Base, blobs: Vec<String>) -> io::Result<()> {
     // init for terminal
     queue!(stdout(), EnterAlternateScreen)?;
     enable_raw_mode()?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
     // setup widget
-    let mut prompt_string = PromptText::new();
+    let mut prompt_string = PromptText::new(base);
     let mut buffers = Preview::new(blobs);
     buffers.make_blocks();
 
@@ -61,17 +69,19 @@ pub fn compose_ui(blobs: Vec<String>) -> io::Result<()> {
 
 #[test]
 fn t1() {
-    let _ = compose_ui(vec![
-        "Hello world".to_string(),
-        "Goodbye world".to_string(),
-        "Hello world".to_string(),
-        "Goodbye world".to_string(),
-        "Hello world".to_string(),
-        "Goodbye world".to_string(),
-        "Hello world".to_string(),
-        "Hello world".to_string(),
-        "Goodbye world".to_string(),
-    ]);
+    let _ = compose_ui(
+        Base::Octal,
+        vec![
+            "Goodbye world".to_string(),
+            "Hello world".to_string(),
+            "Goodbye world".to_string(),
+            "Hello world".to_string(),
+            "Goodbye world".to_string(),
+            "Hello world".to_string(),
+            "Hello world".to_string(),
+            "Goodbye world".to_string(),
+        ],
+    );
 }
 
 // the main frame

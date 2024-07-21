@@ -2,6 +2,7 @@
 // as of now just the number of available buffers
 #[cfg(feature = "read-config")]
 use serde::Deserialize;
+#[cfg(feature = "read-config")]
 use std::{env, fs};
 
 #[derive(Clone, Copy, Debug, Default)]

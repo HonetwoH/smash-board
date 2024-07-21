@@ -1,0 +1,13 @@
+[package]
+name = "config"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["base"]
+base = []
+read-config =["dep:toml", "dep:serde"]
+
+[dependencies]
+serde = {workspace = true, optional = true }
+toml = {workspace = true, optional = true }

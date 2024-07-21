@@ -4,14 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["wayland"]
-wayland = ["dep:wl-clipboard-rs"]
-x11 = []
-read-config =["dep:toml", "dep:serde"]
+default = ["config/base", "tui/inline", "hooks/wayland"]
+interactive = ["dep:tui", "tui/interactive"]
+read-config = ["config/read-config"]
 
 [dependencies]
-clap = {workspace = true}
-rusqlite = {workspace = true}
-serde = {workspace = true, optional = true }
-toml = {workspace = true, optional = true }
-wl-clipboard-rs = {workspace = true, optional =true}
+hooks = { path = "../hooks", features = ["wayland", "x11"] }
+tui = { path = "../tui", features =[ "interactive", "inline" ], optional = true }
+config = { path = "../config", features = [ "read-config", "base" ] }
+clap = { workspace = true }
+rusqlite = { workspace = true }

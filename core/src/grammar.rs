@@ -1,4 +1,4 @@
-use crate::config::Base;
+use config::Base;
 
 #[derive(Debug)]
 pub enum ParsingErrors {
@@ -15,7 +15,7 @@ pub fn check(cap: Base) -> impl Fn(&str) -> Vec<Result<u8, ParsingErrors>> {
             let redundant = [b'.', b' ', b','];
             let mut found = false;
             for i in redundant {
-                found |= if i == x { true } else { false };
+                found |= i == x;
             }
             found
         };

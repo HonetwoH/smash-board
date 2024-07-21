@@ -1,0 +1,12 @@
+[package]
+name = "hooks"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["wayland"]
+wayland = ["dep:wl-clipboard-rs"]
+x11 = []
+
+[dependencies]
+wl-clipboard-rs = {workspace = true, optional =true}

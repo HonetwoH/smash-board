@@ -1,3 +1,4 @@
+#[cfg(feature = "inline")]
 pub mod inline;
 
 #[cfg(feature = "interactive")]
@@ -11,6 +12,8 @@ mod widgets {
     // TODO: Tie Prompt Text, Shuffle List and Preview together
 
     use std::rc::Rc;
+
+    use config::Base;
 
     use ratatui::{
         layout::{Constraint, Direction, Layout, Rect},
@@ -35,7 +38,7 @@ mod widgets {
             Self {
                 base,
                 field: String::from("█"),
-                bufferlist: Vec::with_capacity(base as u8),
+                bufferlist: Vec::with_capacity(base as usize),
             }
         }
         pub fn push(&mut self, x: char) {
@@ -43,7 +46,9 @@ mod widgets {
             let cursor = self.field.pop().unwrap();
             self.field.push(x);
             self.field.push(cursor);
-            self.bufferlist.push({ x.to_digit(base as u32).unwrap() });
+            if let Some(n) = x.to_digit(self.base as u32) {
+                self.bufferlist.push(n as u8);
+            }
         }
         pub fn pop(&mut self) {
             // 3 because the cursor character is 3 byte unicode
@@ -58,6 +63,11 @@ mod widgets {
         pub fn dump(&self) -> &str {
             &self.field
         }
+
+        fn dump_buffer(&self) -> Vec<u8> {
+            self.bufferlist.clone()
+        }
+
         // Return input without the cursor symbol
         fn return_input(&self) -> &str {
             &self.field[0..&self.field.len() - 3]
@@ -96,6 +106,7 @@ mod widgets {
             assert!(ele == n);
             self.selected += 1;
             self.list_selected.push(n);
+            assert!(self.selected <= self.size);
             assert!(self.list_selected.len() + self.list_unselected.len() == self.size as usize);
         }
 

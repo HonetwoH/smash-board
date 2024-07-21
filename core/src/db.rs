@@ -1,8 +1,6 @@
-use std::path::Path;
-
-use crate::config::Base;
-
+use config::Base;
 use rusqlite::{params, Connection, Result};
+use std::path::Path;
 
 // The database will be supporting a stack where their is no notion of
 // pop only PUSH can happen and fetching at any postsion is possible if that
@@ -47,11 +45,9 @@ impl Db {
             (conn, 0)
         } else {
             let conn = Connection::open(path)?;
-            let top_id: usize =
-                match conn.query_row("SELECT MAX(id) FROM pastes;", [], |row| row.get(0)) {
-                    Ok(x) => x,
-                    Err(_) => 0,
-                };
+            let top_id: usize = conn
+                .query_row("SELECT MAX(id) FROM pastes;", [], |row| row.get(0))
+                .unwrap_or(0);
             (conn, top_id)
         };
         Ok(Self {
@@ -112,12 +108,11 @@ impl Db {
     pub fn peek(&self) -> Option<Blob> {
         let fetched = self.fetch(Vec::from([0]));
         assert!(fetched.len() == 1);
-        fetched.get(0).map(|x| x.clone())
+        fetched.first().cloned()
     }
 
     pub fn show(&self) -> Vec<Blob> {
-        let items = self.fetch(Vec::from_iter(0..self.base));
-        items
+        self.fetch(Vec::from_iter(0..self.base))
     }
 }
 

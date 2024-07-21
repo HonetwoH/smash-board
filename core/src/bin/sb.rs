@@ -1,14 +1,14 @@
-use smash_board::cli::{args, Action};
-use smash_board::config::Config;
-use smash_board::db::Db;
-use smash_board::grammar::check;
-use tui::inline::show_preview;
-
-#[cfg(feature = "tui")]
-use tui::interactive::compose_ui;
+use core::cli::{args, Action};
 
 #[cfg(feature = "read-config")]
-use smash_board::config::read_config;
+use config::read_config;
+use config::Config;
+use core::db::Db;
+use core::grammar::check;
+
+use tui::inline::show_preview;
+#[cfg(feature = "tui")]
+use tui::interactive::compose_ui;
 
 fn main() {
     let config = Config::default();

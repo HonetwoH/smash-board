@@ -1,4 +1,4 @@
-use smash_board::hook::poll_clipboard;
+use hooks::wayland::poll_clipboard;
 
 fn main() {
     loop {
