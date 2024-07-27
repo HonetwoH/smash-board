@@ -29,7 +29,11 @@ mod widgets {
     pub struct PromptText {
         base: Base,
         field: String,
-        bufferlist: Vec<u8>,
+    }
+
+    pub(crate) enum ShuffleOperation {
+        Pop(u8),
+        Push(u8),
     }
 
     impl PromptText {
@@ -38,36 +42,38 @@ mod widgets {
             Self {
                 base,
                 field: String::from("█"),
-                bufferlist: Vec::with_capacity(base as usize),
             }
         }
-        pub fn push(&mut self, x: char) {
+        pub fn push(&mut self, x: char) -> Option<ShuffleOperation> {
             // TODO: need a constraint on the length at some point
             let cursor = self.field.pop().unwrap();
             self.field.push(x);
             self.field.push(cursor);
             if let Some(n) = x.to_digit(self.base as u32) {
-                self.bufferlist.push(n as u8);
+                Some(ShuffleOperation::Push(n as u8))
+            } else {
+                None
             }
         }
-        pub fn pop(&mut self) {
+        pub fn pop(&mut self) -> Option<ShuffleOperation> {
             // 3 because the cursor character is 3 byte unicode
             if self.field.len() > 3 {
                 let cursor = self.field.pop().unwrap();
-                let _ = self.field.pop().unwrap();
+                let x = self.field.pop().unwrap();
                 self.field.push(cursor);
-                self.bufferlist.pop();
+                if let Some(n) = x.to_digit(self.base as u32) {
+                    Some(ShuffleOperation::Pop(n as u8))
+                } else {
+                    None
+                }
+            } else {
+                None
             }
         }
         // Return the prompt text for the rendering
         pub fn dump(&self) -> &str {
             &self.field
         }
-
-        fn dump_buffer(&self) -> Vec<u8> {
-            self.bufferlist.clone()
-        }
-
         // Return input without the cursor symbol
         fn return_input(&self) -> &str {
             &self.field[0..&self.field.len() - 3]
@@ -169,39 +175,43 @@ mod widgets {
 
     impl<'a> Preview<'a> {
         pub fn new(blobs: Vec<String>) -> Self {
-            let no_of_blocks = blobs.len() as u8;
-            let order_of_blocks = ShuffleList::new(no_of_blocks);
-            let scroll = Scrollbar::new(ScrollbarOrientation::VerticalRight);
-            // TODO: Should wrap this in a smart pointer
-            // let scrollstate = ScrollbarState::new(no_of_blocks as usize).position(0);
+            let mut preview = {
+                let no_of_blocks = blobs.len() as u8;
+                let order_of_blocks = ShuffleList::new(no_of_blocks);
+                // let scroll = Scrollbar::new(ScrollbarOrientation::VerticalRight);
+                // TODO: Should wrap this in a smart pointer
+                // let scrollstate = ScrollbarState::new(no_of_blocks as usize).position(0);
 
-            let (raw_buffer, no_of_lines): (Vec<Vec<String>>, Vec<usize>) = blobs
-                .into_iter()
-                .map(|b| {
-                    let lines = b
-                        .split('\n')
-                        .map(|x| x.to_string())
-                        .collect::<Vec<String>>();
-                    let len = lines.len();
-                    (lines, len)
-                })
-                .collect();
-            assert_eq!(raw_buffer.len(), no_of_lines.len());
-            assert_eq!(raw_buffer.len(), no_of_blocks as usize);
+                let (raw_buffer, no_of_lines): (Vec<Vec<String>>, Vec<usize>) = blobs
+                    .into_iter()
+                    .map(|b| {
+                        let lines = b
+                            .split('\n')
+                            .map(|x| x.to_string())
+                            .collect::<Vec<String>>();
+                        let len = lines.len();
+                        (lines, len)
+                    })
+                    .collect();
+                assert_eq!(raw_buffer.len(), no_of_lines.len());
+                assert_eq!(raw_buffer.len(), no_of_blocks as usize);
 
-            Self {
-                raw_buffer,
-                no_of_lines,
-                blocks: Vec::new(),
-                order_of_blocks,
-                no_of_blocks,
-                size: None,
-                // scroll_bar: (scroll, scrollstate),
-            }
+                Self {
+                    raw_buffer,
+                    no_of_lines,
+                    blocks: Vec::new(),
+                    order_of_blocks,
+                    no_of_blocks,
+                    size: None,
+                    // scroll_bar: (scroll, scrollstate),
+                }
+            };
+            preview.make_blocks();
+            preview
         }
 
         // this function will modify the blocks as neeeded
-        // TODO: create a test scaffolding for testing different config  of this functions
+        // TODO: make this function actually useful with dynamic values
         pub fn make_blocks(&mut self) {
             let mut blocks = Vec::with_capacity(self.no_of_blocks as usize);
             for i in 0..(self.no_of_blocks as usize) {
@@ -211,11 +221,7 @@ mod widgets {
                         let three_lines: String = lines.into_iter().take(5).collect();
                         three_lines
                     }))
-                    .block(
-                        Block::new()
-                            .borders(Borders::all())
-                            .title(format!(">> {} <<", i)),
-                    ),
+                    .block(Block::new().borders(Borders::all()).title(format!("{}", i))),
                 );
             }
             self.blocks = blocks;
@@ -224,7 +230,8 @@ mod widgets {
         // TODO: call this in render loop
         pub fn size_changed(&mut self, area: Rect) {
             if let Some(size) = self.size {
-                if !(size == area) {
+                if size != area {
+                    // TODO: is this correct
                     self.make_blocks();
                     self.size = Some(area);
                 }

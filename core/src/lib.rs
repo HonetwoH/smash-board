@@ -25,7 +25,7 @@ pub mod cli {
             input_text: String,
         },
         /// Compose together buffer interactively
-        #[cfg(feature = "tui")]
+        #[cfg(feature = "interactive")]
         Compose,
     }
 
@@ -33,7 +33,7 @@ pub mod cli {
         Paste(Option<String>),
         Copy(String),
         Show,
-        #[cfg(feature = "tui")]
+        #[cfg(feature = "interactive")]
         Compose,
     }
 
@@ -55,7 +55,7 @@ pub mod cli {
                 Action::Copy(input_text)
             }
             Command::Show => Action::Show,
-            #[cfg(feature = "tui")]
+            #[cfg(feature = "interactive")]
             Command::Compose => Action::Compose,
         }
     }

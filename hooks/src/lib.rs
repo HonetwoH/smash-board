@@ -18,3 +18,8 @@ mod utils {
         }
     }
 }
+
+use std::io::Result;
+pub trait Clipboard {
+    fn get_from_clipboard(polling_delay: u64, previous: &mut Vec<u8>) -> Result<Vec<u8>>;
+}

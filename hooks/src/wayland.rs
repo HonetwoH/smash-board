@@ -1,4 +1,4 @@
-use crate::utils::are_equal;
+use crate::{utils::are_equal, Clipboard};
 use std::{
     io::{Read, Result},
     thread,
@@ -7,7 +7,7 @@ use std::{
 
 use wl_clipboard_rs::paste::{get_contents, ClipboardType, Error, MimeType, Seat};
 
-pub fn get_from_clipboard(previous: &mut Vec<u8>) -> Result<Vec<u8>> {
+fn get_from_clipboard(previous: &mut Vec<u8>) -> Result<Vec<u8>> {
     let mut contents = vec![];
     loop {
         let result = get_contents(ClipboardType::Regular, Seat::Unspecified, MimeType::Text);

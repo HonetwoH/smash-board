@@ -1,7 +1,7 @@
-use hooks::wayland::poll_clipboard;
+// use hooks::wayland::poll_clipboard;
 
 fn main() {
-    loop {
-        _ = poll_clipboard();
-    }
+    // loop {
+    //     _ = poll_clipboard();
+    // }
 }

@@ -1,4 +1,4 @@
-use crate::widgets::{Preview, PromptText};
+use crate::widgets::{Preview, PromptText, ShuffleOperation};
 use config::Base;
 
 use std::io::{self, stdout};
@@ -15,28 +15,34 @@ use ratatui::{
     Frame, Terminal,
 };
 
-fn handle_events(text: &mut PromptText) -> io::Result<bool> {
+enum Operation {
+    ExitSuccessful,
+    ExitError,
+    ExitUnsure,
+}
+
+fn handle_events(
+    text: &mut PromptText,
+) -> io::Result<(Option<Operation>, Option<ShuffleOperation>)> {
     if event::poll(std::time::Duration::from_millis(50))? {
         if let Event::Key(key) = event::read()? {
             if key.kind == event::KeyEventKind::Press {
                 if KeyCode::Enter == key.code || KeyCode::Esc == key.code {
-                    return Ok(true);
+                    return Ok((Some(Operation::ExitSuccessful), None));
                 } else {
                     if let KeyCode::Char(x) = key.code {
-                        text.push(x);
-                        return Ok(false);
+                        return Ok((None, text.push(x)));
                     } else if let KeyCode::Backspace = key.code {
-                        text.pop();
-                        return Ok(false);
+                        return Ok((None, text.pop()));
                     } else {
-                        dbg!(key.code);
-                        return Ok(false);
+                        // dbg!(key.code);
+                        return Ok((None, None));
                     }
                 }
             }
         }
     }
-    Ok(false)
+    Ok((Some(Operation::ExitUnsure), None))
 }
 
 // The main function for in this module
@@ -49,17 +55,31 @@ pub fn compose_ui(base: Base, blobs: Vec<String>) -> io::Result<()> {
     // setup widget
     let mut prompt_string = PromptText::new(base);
     let mut buffers = Preview::new(blobs);
-    buffers.make_blocks();
 
     // the main loop
     let mut should_quit = false;
     while !should_quit {
         // event
-        should_quit = handle_events(&mut prompt_string)?;
-
+        let (to_quit, operation_for_list) = handle_events(&mut prompt_string)?;
+        match to_quit {
+            None => should_quit = false,
+            Some(op) => match op {
+                Operation::ExitSuccessful => should_quit = true,
+                Operation::ExitError => unreachable!(),
+                Operation::ExitUnsure => todo!("Handle me PLEASE"),
+            },
+        }
+        match operation_for_list {
+            Some(op) => match op {
+                ShuffleOperation::Pop(n) => buffers.unselect(n),
+                ShuffleOperation::Push(n) => buffers.select(n),
+            },
+            None => {}
+        }
         // render
         terminal.draw(|frame| layout_and_render(frame, &prompt_string, &buffers))?;
     }
+    // exract out from buffer
 
     // deinit for terminal
     disable_raw_mode()?;

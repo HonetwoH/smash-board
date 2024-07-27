@@ -7,7 +7,7 @@ use core::db::Db;
 use core::grammar::check;
 
 use tui::inline::show_preview;
-#[cfg(feature = "tui")]
+#[cfg(feature = "interactive")]
 use tui::interactive::compose_ui;
 
 fn main() {
@@ -28,10 +28,10 @@ fn main() {
                 show_preview(blobs.into_iter().enumerate().collect());
             }
         }
-        #[cfg(feature = "tui")]
+        #[cfg(feature = "interactive")]
         Action::Compose => {
             let items = pastes_db.show();
-            let _ = compose_ui(items, parser, base);
+            let _ = compose_ui(base, items);
         }
         Action::Paste(bufs) => {
             if let Some(buf) = bufs {
