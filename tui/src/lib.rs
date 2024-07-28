@@ -228,7 +228,7 @@ mod widgets {
         }
 
         // TODO: call this in render loop
-        pub fn size_changed(&mut self, area: Rect) {
+        fn size_changed(&mut self, area: Rect) {
             if let Some(size) = self.size {
                 if size != area {
                     // TODO: is this correct
@@ -241,6 +241,9 @@ mod widgets {
         }
 
         pub fn select(&mut self, n: u8) {
+            if n >= self.no_of_blocks {
+                return;
+            }
             let block: Paragraph<'_> = self.blocks[n as usize].clone();
             let new_block = block.block(
                 Block::default()
@@ -253,6 +256,9 @@ mod widgets {
         }
 
         pub fn unselect(&mut self, n: u8) {
+            if n >= self.no_of_blocks {
+                return;
+            }
             let block: Paragraph<'_> = self.blocks[n as usize].clone();
             let new_block = block.block(
                 Block::default()
@@ -261,6 +267,14 @@ mod widgets {
             );
             self.blocks[n as usize] = new_block;
             self.order_of_blocks.unselect(n)
+        }
+
+        pub fn yeild_list(self) -> Vec<Vec<String>> {
+            let mut out = Vec::with_capacity(self.order_of_blocks.selected as usize);
+            for i in self.order_of_blocks.list_selected {
+                out.push(self.raw_buffer[i as usize].clone())
+            }
+            out
         }
     }
 

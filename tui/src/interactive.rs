@@ -16,9 +16,10 @@ use ratatui::{
 };
 
 enum Operation {
-    ExitSuccessful,
+    Exit,
+    Abort,
     ExitError,
-    ExitUnsure,
+    Waiting,
 }
 
 fn handle_events(
@@ -27,8 +28,10 @@ fn handle_events(
     if event::poll(std::time::Duration::from_millis(50))? {
         if let Event::Key(key) = event::read()? {
             if key.kind == event::KeyEventKind::Press {
-                if KeyCode::Enter == key.code || KeyCode::Esc == key.code {
-                    return Ok((Some(Operation::ExitSuccessful), None));
+                if KeyCode::Enter == key.code {
+                    return Ok((Some(Operation::Exit), None));
+                } else if KeyCode::Esc == key.code {
+                    return Ok((Some(Operation::Abort), None));
                 } else {
                     if let KeyCode::Char(x) = key.code {
                         return Ok((None, text.push(x)));
@@ -42,7 +45,7 @@ fn handle_events(
             }
         }
     }
-    Ok((Some(Operation::ExitUnsure), None))
+    Ok((Some(Operation::Waiting), None))
 }
 
 // The main function for in this module
@@ -56,17 +59,16 @@ pub fn compose_ui(base: Base, blobs: Vec<String>) -> io::Result<()> {
     let mut prompt_string = PromptText::new(base);
     let mut buffers = Preview::new(blobs);
 
-    // the main loop
-    let mut should_quit = false;
-    while !should_quit {
+    let exit_status: Operation = loop {
         // event
         let (to_quit, operation_for_list) = handle_events(&mut prompt_string)?;
         match to_quit {
-            None => should_quit = false,
+            None => {}
             Some(op) => match op {
-                Operation::ExitSuccessful => should_quit = true,
-                Operation::ExitError => unreachable!(),
-                Operation::ExitUnsure => todo!("Handle me PLEASE"),
+                Operation::Exit | Operation::ExitError | Operation::Abort => {
+                    break op;
+                }
+                Operation::Waiting => {}
             },
         }
         match operation_for_list {
@@ -78,12 +80,22 @@ pub fn compose_ui(base: Base, blobs: Vec<String>) -> io::Result<()> {
         }
         // render
         terminal.draw(|frame| layout_and_render(frame, &prompt_string, &buffers))?;
-    }
-    // exract out from buffer
-
+    };
     // deinit for terminal
     disable_raw_mode()?;
     queue!(stdout(), LeaveAlternateScreen)?;
+
+    // exract out from buffer
+    match exit_status {
+        Operation::Exit => buffers.yeild_list().into_iter().for_each(|lines| {
+            for line in lines {
+                print!("{}", line);
+            }
+            println!();
+        }),
+        Operation::Abort | Operation::ExitError => {}
+        Operation::Waiting => unreachable!(),
+    }
     Ok(())
 }
 
