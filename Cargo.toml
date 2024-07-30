@@ -1,26 +1,6 @@
-# [package]
-# name = "smash_board"
-# version = "0.1.0"
-# edition = "2021"
-# description = "A yet CLI clipboard manager"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [workspace]
 members = ["tui", "core", "hooks", "config"]
 resolver = "2"
-
-# [features]
-# default = ["wayland"]
-# tui = ["tui/interactive"]
-# read-config = ["core"]
-# wayland = ["hooks"]
-# x11 = ["hooks"]
-
-# [dependencies]
-# core = {path = "core", features = ["read-config"], optional = true}
-# hooks = {path = "hooks", features = ["wayland", "x11"], optional = true}
-# tui = { path = "tui", features = ["interactive"] }
 
 [workspace.dependencies]
 crossterm = "0.27" 
@@ -29,4 +9,3 @@ serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
 rusqlite = "0.30"
 clap = { version = "4.5.4", features = ["derive"]}
-wl-clipboard-rs = "0.8"

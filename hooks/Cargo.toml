@@ -5,8 +5,5 @@ edition = "2021"
 
 [features]
 default = ["wayland"]
-wayland = ["dep:wl-clipboard-rs"]
+wayland = []
 x11 = []
-
-[dependencies]
-wl-clipboard-rs = {workspace = true, optional =true}
