@@ -218,8 +218,14 @@ mod widgets {
                 blocks.push(
                     Paragraph::new(Text::raw({
                         let lines: Vec<String> = self.raw_buffer[i].clone();
-                        let three_lines: String = lines.into_iter().take(5).collect();
-                        three_lines
+                        lines
+                            .into_iter()
+                            .take(5)
+                            .fold(String::new(), |mut lines, line| {
+                                lines.push_str(&line);
+                                lines.push('\n');
+                                lines
+                            })
                     }))
                     .block(Block::new().borders(Borders::all()).title(format!("{}", i))),
                 );
@@ -284,10 +290,12 @@ mod widgets {
             // HOWTO: render scrollable list
             let outer_block = Block::new().borders(Borders::all()).title("Preview");
             let inner_area = outer_block.inner(area);
+            let max =
+                (inner_area.height - (2 * self.no_of_blocks as u16)) / self.no_of_blocks as u16;
             let layout: Rc<[Rect]> = {
                 Layout::default()
                     .direction(Direction::Vertical)
-                    .constraints(vec![Constraint::Max(5); self.no_of_blocks as usize])
+                    .constraints(vec![Constraint::Max(max); self.no_of_blocks as usize])
                     .split(inner_area)
             };
 
